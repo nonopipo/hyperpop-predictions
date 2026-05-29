@@ -193,8 +193,8 @@ def injecter_design():
             color: inherit !important;
         }
 
-        /* ==========================================
-        /* L'AUTEL DES SEIGNEURS (PANTHÉON TOP 3)
+/* ==========================================
+        /* L'AUTEL DES SEIGNEURS (LÉVITATION 3D HOLOGRAPHIQUE)
         /* ========================================== */
         .pantheon-container {
             display: flex;
@@ -203,18 +203,69 @@ def injecter_design():
             gap: 20px;
             margin: 40px 0 50px 0;
             width: 100%;
+            /* C'est ici que la magie opère : on crée la boîte 3D */
+            perspective: 1200px; 
+            transform-style: preserve-3d;
         }
+
         .pantheon-card {
             background: rgba(5, 0, 16, 0.85) !important;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 20px;
             text-align: center;
             font-family: 'Arial Black', sans-serif !important;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+            /* La carte doit conserver les effets 3D pour ses enfants (l'avatar) */
+            transform-style: preserve-3d; 
+            /* Flottaison anti-gravité perpétuelle */
+            animation: float-holo 6s ease-in-out infinite alternate;
         }
+
+        /* Désynchronisation de la gravité pour chaque carte */
+        .card-2nd { animation-delay: 0s; }
+        .card-1st { animation-delay: -2s; z-index: 10; }
+        .card-3rd { animation-delay: -4s; }
+
+        @keyframes float-holo {
+            0% { transform: translateY(0px) rotateX(2deg) rotateY(0deg); }
+            100% { transform: translateY(-12px) rotateX(-2deg) rotateY(3deg); }
+        }
+
+        /* L'EFFET DE DISTORSION AU SURVOL (LA LÉVITATION) */
         .pantheon-card:hover {
-            transform: translateY(-5px) scale(1.02);
+            animation: none; /* Stoppe la flottaison de base pour figer l'interaction */
+            /* La carte s'écrase en arrière et tourne sur le côté */
+            transform: translateY(-20px) scale(1.05) rotateX(20deg) rotateY(-15deg);
+            z-index: 20;
         }
+
+        /* LE FAISCEAU LASER HOLOGRAPHIQUE (Glass effect) */
+        .pantheon-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: shine-holo 7s infinite;
+            pointer-events: none; /* Pour ne pas bloquer les clics */
+            z-index: 5;
+        }
+
+        @keyframes shine-holo {
+            0% { left: -150%; }
+            15% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        /* Amplification Thermonucléaire des Néons au survol */
+        .card-1st:hover { box-shadow: -20px 20px 50px rgba(255, 255, 0, 0.5), inset 0 0 30px rgba(255, 255, 0, 0.4) !important; border-color: #ffffff !important; }
+        .card-2nd:hover { box-shadow: -15px 15px 40px rgba(0, 255, 255, 0.5), inset 0 0 25px rgba(0, 255, 255, 0.4) !important; border-color: #ffffff !important; }
+        .card-3rd:hover { box-shadow: -15px 15px 40px rgba(255, 0, 255, 0.5), inset 0 0 25px rgba(255, 0, 255, 0.4) !important; border-color: #ffffff !important; }
+
+        /* PARAMÉTRAGE DES AVATARS */
         .pantheon-avatar {
             width: 80px;
             height: 80px;
@@ -222,72 +273,33 @@ def injecter_design():
             image-rendering: pixelated;
             margin: 10px auto;
             display: block;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transform: translateZ(0px); /* Point de départ plat */
+            position: relative;
+            z-index: 10;
         }
-        .card-1st {
-            border: 4px solid #ffff00 !important;
-            box-shadow: 0 0 30px #ffff00, inset 0 0 15px rgba(255, 255, 0, 0.2) !important;
-            width: 220px;
-            height: 250px;
-            z-index: 3;
+
+        /* LE DÉTACHEMENT 3D AU SURVOL : L'avatar sort littéralement de l'écran */
+        .pantheon-card:hover .pantheon-avatar {
+            transform: translateZ(60px) scale(1.2);
+            box-shadow: 10px 20px 30px rgba(0,0,0,0.9), 0 0 20px currentColor;
         }
-        .card-1st .pantheon-avatar {
-            width: 100px;
-            height: 100px;
-            box-shadow: 0 0 20px #ffff00;
-            border: 2px solid #ffff00;
-        }
-        .card-2nd {
-            border: 3px solid #00ffff !important;
-            box-shadow: 0 0 20px #00ffff, inset 0 0 10px rgba(0, 255, 255, 0.1) !important;
-            width: 180px;
-            height: 205px;
-            z-index: 2;
-        }
-        .card-3rd {
-            border: 3px solid #ff00ff !important;
-            box-shadow: 0 0 20px #ff00ff, inset 0 0 10px rgba(255, 0, 255, 0.1) !important;
-            width: 180px;
-            height: 190px;
-            z-index: 1;
-        }
-        .pantheon-rank {
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 900;
-        }
-        .pantheon-name {
-            color: #ffffff !important;
-            font-size: 1.2rem;
-            margin: 8px 0 4px 0;
-            text-shadow: 0 0 5px rgba(255,255,255,0.6);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .pantheon-pts {
-            color: #39ff14 !important;
-            font-size: 1.1rem;
-            font-weight: 900;
-            text-shadow: 0 0 5px rgba(57, 255, 20, 0.3);
-        }
-        .pantheon-empty-av {
-            width: 80px;
-            height: 80px;
-            background: #12002f;
-            border: 2px dashed #333;
-            border-radius: 6px;
-            margin: 10px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-        }
-        .card-1st .pantheon-empty-av {
-            width: 100px;
-            height: 100px;
-            font-size: 2.5rem;
-        }
+
+        /* DÉTAILS DE BASE DES CARTES */
+        .card-1st { border: 4px solid #ffff00 !important; box-shadow: 0 0 30px #ffff00, inset 0 0 15px rgba(255, 255, 0, 0.2) !important; width: 220px; height: 250px; }
+        .card-1st .pantheon-avatar { width: 100px; height: 100px; box-shadow: 0 0 20px #ffff00; border: 2px solid #ffff00; }
+        .card-2nd { border: 3px solid #00ffff !important; box-shadow: 0 0 20px #00ffff, inset 0 0 10px rgba(0, 255, 255, 0.1) !important; width: 180px; height: 205px; }
+        .card-3rd { border: 3px solid #ff00ff !important; box-shadow: 0 0 20px #ff00ff, inset 0 0 10px rgba(255, 0, 255, 0.1) !important; width: 180px; height: 190px; }
+
+        .pantheon-rank { font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 900; }
+        .pantheon-name { color: #ffffff !important; font-size: 1.2rem; margin: 8px 0 4px 0; text-shadow: 0 0 5px rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateZ(30px); transition: all 0.6s; }
+        .pantheon-card:hover .pantheon-name { transform: translateZ(40px); }
+        .pantheon-pts { color: #39ff14 !important; font-size: 1.1rem; font-weight: 900; text-shadow: 0 0 5px rgba(57, 255, 20, 0.3); transform: translateZ(20px); transition: all 0.6s; }
+        .pantheon-card:hover .pantheon-pts { transform: translateZ(30px); }
+
+        .pantheon-empty-av { width: 80px; height: 80px; background: #12002f; border: 2px dashed #333; border-radius: 6px; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 2rem; transition: all 0.6s; transform: translateZ(0px); }
+        .pantheon-card:hover .pantheon-empty-av { transform: translateZ(60px) scale(1.2); box-shadow: 10px 20px 30px rgba(0,0,0,0.9); }
+        .card-1st .pantheon-empty-av { width: 100px; height: 100px; font-size: 2.5rem; }
     </style>
     """, unsafe_allow_html=True)
 
