@@ -182,6 +182,16 @@ def injecter_design():
             vertical-align: middle;
             margin-right: 10px;
         }
+        /* ==========================================
+        /* ANTIDOTE : FIX DES ICÔNES STREAMLIT (Flèches, Croix)
+        /* ========================================== */
+        span.material-symbols-rounded, 
+        span[data-testid="stIconMaterial"], 
+        i.material-icons,
+        .st-icon {
+            font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
+            color: inherit !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
