@@ -428,7 +428,7 @@ with st.sidebar:
         st.markdown(chart_html, unsafe_allow_html=True)
     
     st.markdown("""<hr style="border-color: #ff00ff;">""", unsafe_allow_html=True)
-    if user == "Noé": st.markdown("<span style='color:#ffff00; font-weight: bold;'>⚙️ Administration activée</span>", unsafe_allow_html=True)
+    if user == "Noe": st.markdown("<span style='color:#ffff00; font-weight: bold;'>⚙️ Administration activée</span>", unsafe_allow_html=True)
     if st.button("Se déconnecter"):
         st.session_state.utilisateur_courant = None
         rafraichir()
@@ -482,8 +482,8 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
                     st.caption(f"Créé par {q['auteur']} | Reste {jours_restants} jour(s)")
                 except: pass
 
-                # ADMIN NOÉ (OUVERT)
-                if user == "Noé":
+                # ADMIN Noe (OUVERT)
+                if user == "Noe":
                     with st.expander("⚙️ Clôturer (Admin)"):
                         c1, c2 = st.columns([3, 1])
                         with c1:
@@ -536,8 +536,8 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
                     st.caption(f"Créé par {q['auteur']} | Reste {jours_restants} jour(s)")
                 except: pass
 
-                # ADMIN NOÉ (CLOS)
-                if user == "Noé":
+                # ADMIN Noe (CLOS)
+                if user == "Noe":
                     st.markdown("<span style='color:#ffff00; font-weight:bold;'>⚙️ Administration :</span>", unsafe_allow_html=True)
                     c1, c2 = st.columns([3, 1])
                     with c1:
