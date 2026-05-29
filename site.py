@@ -192,6 +192,102 @@ def injecter_design():
             font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
             color: inherit !important;
         }
+
+        /* ==========================================
+        /* L'AUTEL DES SEIGNEURS (PANTHÉON TOP 3)
+        /* ========================================== */
+        .pantheon-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 20px;
+            margin: 40px 0 50px 0;
+            width: 100%;
+        }
+        .pantheon-card {
+            background: rgba(5, 0, 16, 0.85) !important;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            font-family: 'Arial Black', sans-serif !important;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pantheon-card:hover {
+            transform: translateY(-5px) scale(1.02);
+        }
+        .pantheon-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
+            image-rendering: pixelated;
+            margin: 10px auto;
+            display: block;
+        }
+        .card-1st {
+            border: 4px solid #ffff00 !important;
+            box-shadow: 0 0 30px #ffff00, inset 0 0 15px rgba(255, 255, 0, 0.2) !important;
+            width: 220px;
+            height: 250px;
+            z-index: 3;
+        }
+        .card-1st .pantheon-avatar {
+            width: 100px;
+            height: 100px;
+            box-shadow: 0 0 20px #ffff00;
+            border: 2px solid #ffff00;
+        }
+        .card-2nd {
+            border: 3px solid #00ffff !important;
+            box-shadow: 0 0 20px #00ffff, inset 0 0 10px rgba(0, 255, 255, 0.1) !important;
+            width: 180px;
+            height: 205px;
+            z-index: 2;
+        }
+        .card-3rd {
+            border: 3px solid #ff00ff !important;
+            box-shadow: 0 0 20px #ff00ff, inset 0 0 10px rgba(255, 0, 255, 0.1) !important;
+            width: 180px;
+            height: 190px;
+            z-index: 1;
+        }
+        .pantheon-rank {
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 900;
+        }
+        .pantheon-name {
+            color: #ffffff !important;
+            font-size: 1.2rem;
+            margin: 8px 0 4px 0;
+            text-shadow: 0 0 5px rgba(255,255,255,0.6);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .pantheon-pts {
+            color: #39ff14 !important;
+            font-size: 1.1rem;
+            font-weight: 900;
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.3);
+        }
+        .pantheon-empty-av {
+            width: 80px;
+            height: 80px;
+            background: #12002f;
+            border: 2px dashed #333;
+            border-radius: 6px;
+            margin: 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        .card-1st .pantheon-empty-av {
+            width: 100px;
+            height: 100px;
+            font-size: 2.5rem;
+        }
     </style>
     """, unsafe_allow_html=True)
 
@@ -592,15 +688,56 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 # 6. AUTRES ONGLETS
 # ==========================================
 elif st.session_state.page_actuelle == "🏆 Classement":
-    st.subheader("LEADERBOARD GLOBAL")
-    # AFFICHE LES BADGES DANS LE CLASSEMENT !
+    st.subheader("L'AUTEL DES SOUVERAINS")
+    
+    # 1. Extraction et tri brut des utilisateurs depuis la Matrice
+    utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
+    
+    # 2. Construction HTML du Panthéon (Podium Physique : 2nd, 1er, 3ème)
+    html_pantheon = "<div class='pantheon-container'>"
+    
+    # [GAUCHE : SECOND PLACE]
+    if len(utilisateurs_tries) >= 2:
+        u_nom, u_data = utilisateurs_tries[1]
+        av = u_data.get("avatar")
+        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥈</div>"
+        html_pantheon += f"<div class='pantheon-card card-2nd'><div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+    else:
+        html_pantheon += "<div class='pantheon-card card-2nd' style='opacity:0.2;'><div class='pantheon-rank'>#2 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        
+    # [CENTRE : PREMIÈRE PLACE]
+    if len(utilisateurs_tries) >= 1:
+        u_nom, u_data = utilisateurs_tries[0]
+        av = u_data.get("avatar")
+        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>👑</div>"
+        html_pantheon += f"<div class='pantheon-card card-1st'><div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+    else:
+        html_pantheon += "<div class='pantheon-card card-1st' style='opacity:0.2;'><div class='pantheon-rank'>#1 ARCHITECTE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        
+    # [DROITE : TROISIÈME PLACE]
+    if len(utilisateurs_tries) >= 3:
+        u_nom, u_data = utilisateurs_tries[2]
+        av = u_data.get("avatar")
+        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥉</div>"
+        html_pantheon += f"<div class='pantheon-card card-3rd'><div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+    else:
+        html_pantheon += "<div class='pantheon-card card-3rd' style='opacity:0.2;'><div class='pantheon-rank'>#3 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        
+    html_pantheon += "</div>"
+    st.markdown(html_pantheon, unsafe_allow_html=True)
+    
+    # 3. Le reste du classement sous forme de Tableau Global Hyper-Style
+    st.write("<br>", unsafe_allow_html=True)
+    st.subheader("REGISTRE GLOBAL DES LOGS")
+    
     scores_data = []
-    for k, v in db["utilisateurs"].items():
+    for k, v in utilisateurs_tries:
         av_b64 = v.get("avatar")
-        img_html = f"<img src='data:image/png;base64,{av_b64}' class='avatar-pixel' style='width:30px; height:30px;'>" if av_b64 else "👤"
-        joueur_complet = f"{img_html} {k} {''.join(v.get('badges', []))}"
-        scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})    
-        df_scores = pd.DataFrame(scores_data).sort_values(by="Points", ascending=False)
+        img_html = f"<img src='data:image/png;base64,{av_b64}' class='avatar-pixel' style='width:28px; height:28px; margin-right:8px;'>" if av_b64 else "👤 "
+        joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
+        scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
+        
+    df_scores = pd.DataFrame(scores_data)
     
     html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
     for _, row in df_scores.iterrows():
@@ -608,7 +745,8 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     html_table += "</tbody></table>"
     st.markdown(html_table, unsafe_allow_html=True)
     
-    st.write("---")
+    # 4. Historique classique des anciens marchés clos
+    st.write("<br><br>", unsafe_allow_html=True)
     st.subheader("HISTORIQUE DES RÉSULTATS")
     closes = [q for q in db["questions"] if q["statut"] == "clos"]
     for q in reversed(closes):
