@@ -912,8 +912,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     
     st.subheader("L'AUTEL DES SOUVERAINS")
 
-    st.markdown("<p style='color:#ff0055; font-weight:bold; font-size:1.2rem; text-align:center;'>🚨 INTRUSION DÉTECTÉE : Cliquez n'importe où sur l'écran pour activer les commandes, bougez la souris et appuyez sur [ESPACE] pour tirer ! 🚨</p>", unsafe_allow_html=True)
-
     # ==========================================
     # 🌟 MINIJEU CACHÉ : SURVIE MATRICIELLE 
     # ==========================================
