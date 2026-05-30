@@ -394,7 +394,7 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style):
     model = genai.GenerativeModel('gemini-flash-latest')
     
     # 3. Le Prompt Absolu (celui qu'on a perfectionné ensemble)
-    prompt = f"""
+    prompt = f""""
 Tu es l'Architecte de la Matrice. Dessine un familier virtuel en code SVG pur.
 AUCUN TEXTE AVANT OU APRÈS. UNIQUEMENT LE <svg>...</svg>.
 
@@ -410,7 +410,7 @@ RÈGLES STRICTES DE GÉNÉRATION (OBLIGATOIRES) :
 3. HALO ANIMÉ : Ajoute une forme avec <animate attributeName="stroke-opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite"/>
 4. YEUX VIVANTS : Les yeux DOIVENT être des <ellipse> brillantes. Ajoute dedans : <animate attributeName="ry" values="10;1;10" dur="4s" keyTimes="0;0.05;1" repeatCount="indefinite"/>
 5. SYMÉTRIE ET STYLE : Design plat, géométrie sacrée, Hyperpop/Cyberpunk.
-"""
+""""
     
     try:
         # 4. Appel à la Matrice
