@@ -897,73 +897,96 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 # 6. AUTRES ONGLETS
 # ==========================================
 elif st.session_state.page_actuelle == "🏆 Classement":
-    st.subheader("L'AUTEL DES SOUVERAINS")
-    
-    # --- LE LASER ANTI-FOND : Éradique le rectangle blanc/noir de l'IA ---
+    import random
     import re
-    def preparer_titan(svg_code):
+    
+    st.subheader("L'AUTEL DES SOUVERAINS")
+
+    # ==========================================
+    # 🌟 ÉVÈNEMENT : LÂCHER DES SYMBIOTES VAGABONDS
+    # ==========================================
+    def nettoyer_svg_vagabond(svg_code):
         if not svg_code: return ""
-        # On détruit toute balise <rect> de la taille du canvas
+        # Laser anti-fond absolu
         svg_code = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
         svg_code = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
-        # On supprime aussi d'éventuels fonds directement dans la balise <svg>
         svg_code = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', svg_code, flags=re.IGNORECASE)
+        
+        # On libère les dimensions pour que le CSS parent les contrôle
+        svg_code = re.sub(r'width="[^"]*"', 'width="100%"', svg_code, count=1, flags=re.IGNORECASE)
+        svg_code = re.sub(r'height="[^"]*"', 'height="100%"', svg_code, count=1, flags=re.IGNORECASE)
         return svg_code.replace('\n', ' ')
 
-    # --- INJECTION DU DESIGN DU TITAN PARALLAXE ---
-    st.markdown("""
-    <style>
-        .pantheon-card {
-            animation: none !important;
-            transform: none !important;
-        }
-        
-        .titan-holder {
-            position: relative;
-            transform-style: preserve-3d;
-            animation: float-holo 6s ease-in-out infinite alternate;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        
-        .titan-holder-2nd { animation-delay: 0s; }
-        .titan-holder-1st { animation-delay: -2s; z-index: 10; }
-        .titan-holder-3rd { animation-delay: -4s; }
-        
-        .titan-holder:hover {
-            transform: translateY(-25px) scale(1.05) rotateX(18deg) rotateY(-12deg) !important;
-            z-index: 30 !important;
-        }
-        
-        /* LE TITAN SPECTRAL */
-        .titan-spectre {
-            position: absolute;
-            top: -55%; 
-            left: 50%;
-            width: 240px;
-            height: 240px;
-            transform: translateX(-50%) translateZ(-90px) scale(1.7);
-            opacity: 0.15; /* Hologramme discret */
-            pointer-events: none;
-            z-index: -1;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        
-        .titan-holder:hover .titan-spectre {
-            opacity: 0.45;
-            transform: translateX(-50%) translateZ(-50px) scale(1.9);
-            filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6)); /* Halo d'énergie */
-        }
-        
-        .titan-holder-1st:hover .pantheon-card { box-shadow: -20px 20px 50px rgba(255, 255, 0, 0.5), inset 0 0 30px rgba(255, 255, 0, 0.4) !important; border-color: #ffffff !important; }
-        .titan-holder-2nd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(0, 255, 255, 0.5), inset 0 0 25px rgba(0, 255, 255, 0.4) !important; border-color: #ffffff !important; }
-        .titan-holder-3rd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(255, 0, 255, 0.5), inset 0 0 25px rgba(255, 0, 255, 0.4) !important; border-color: #ffffff !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    familiers_html = ""
+    trajectoires = ["roam-1", "roam-2", "roam-3", "roam-4"]
     
-    # 1. Extraction et tri brut des utilisateurs
+    # On parcourt tous les joueurs pour libérer leurs monstres
+    for nom_joueur, data_joueur in db.get("utilisateurs", {}).items():
+        svg_brut = data_joueur.get("familier_svg")
+        if svg_brut:
+            svg_propre = nettoyer_svg_vagabond(svg_brut)
+            
+            # Positionnement et comportements aléatoires
+            top = random.randint(5, 85)
+            left = random.randint(5, 85)
+            duree = random.randint(15, 35) # Mouvement très lent et flottant
+            delai = random.randint(0, 10)
+            anim = random.choice(trajectoires)
+            
+            # Injection de l'entité
+            familiers_html += f"""
+            <div class="roaming-pet" style="top: {top}vh; left: {left}vw; animation: {anim} {duree}s infinite ease-in-out {delai}s alternate;">
+                {svg_propre}
+            </div>
+            """
+
+    # CSS des vagabonds (flottent au-dessus, mais ne bloquent pas les clics)
+    st.markdown(f"""
+    <style>
+        .roaming-pet {{
+            position: fixed;
+            width: 70px;
+            height: 70px;
+            pointer-events: none; /* Traverse les clics */
+            z-index: 9999; /* Par-dessus la Matrice */
+            opacity: 0.65;
+            filter: drop-shadow(0 0 10px rgba(57, 255, 20, 0.5));
+            transition: opacity 0.3s;
+        }}
+        
+        /* 4 trajectoires stellaires différentes */
+        @keyframes roam-1 {{
+            0% {{ transform: translate(0, 0) rotate(-10deg) scale(1); }}
+            33% {{ transform: translate(30vw, -20vh) rotate(15deg) scale(1.2); }}
+            66% {{ transform: translate(-20vw, 30vh) rotate(-5deg) scale(0.9); }}
+            100% {{ transform: translate(10vw, 10vh) rotate(5deg) scale(1.1); }}
+        }}
+        @keyframes roam-2 {{
+            0% {{ transform: translate(0, 0) rotate(5deg) scale(1); }}
+            33% {{ transform: translate(-30vw, -10vh) rotate(-15deg) scale(1.1); }}
+            66% {{ transform: translate(25vw, 25vh) rotate(10deg) scale(0.8); }}
+            100% {{ transform: translate(-10vw, -20vh) rotate(-5deg) scale(1.2); }}
+        }}
+        @keyframes roam-3 {{
+            0% {{ transform: translate(0, 0) rotate(0deg) scale(1.2); }}
+            50% {{ transform: translate(40vw, 10vh) rotate(20deg) scale(0.8); }}
+            100% {{ transform: translate(-40vw, -10vh) rotate(-20deg) scale(1.2); }}
+        }}
+        @keyframes roam-4 {{
+            0% {{ transform: translate(0, 0) rotate(0deg) scale(0.9); }}
+            50% {{ transform: translate(-10vw, 40vh) rotate(-10deg) scale(1.3); }}
+            100% {{ transform: translate(10vw, -40vh) rotate(10deg) scale(0.9); }}
+        }}
+    </style>
+    {familiers_html}
+    """, unsafe_allow_html=True)
+
+
+    # ==========================================
+    # RETOUR AU PANTHÉON CLASSIQUE ORIGINAL
+    # ==========================================
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
     
-    # 2. Construction HTML du Panthéon avec les Titans 3D
     html_pantheon = "<div class='pantheon-container'>"
     
     # [GAUCHE : SECOND PLACE]
@@ -971,22 +994,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[1]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥈</div>"
-        
-        # Application du Laser Anti-Fond ici !
-        fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
-        
-        html_pantheon += f"""
-        <div class='titan-holder titan-holder-2nd'>
-            {titan_html}
-            <div class='pantheon-card card-2nd'>
-                <div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>
-                {img_tag}
-                <div class='pantheon-name'>{u_nom}</div>
-                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
-            </div>
-        </div>
-        """
+        html_pantheon += f"<div class='pantheon-card card-2nd'><div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
     else:
         html_pantheon += "<div class='pantheon-card card-2nd' style='opacity:0.2;'><div class='pantheon-rank'>#2 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
@@ -995,22 +1003,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[0]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>👑</div>"
-        
-        # Application du Laser Anti-Fond ici !
-        fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
-        
-        html_pantheon += f"""
-        <div class='titan-holder titan-holder-1st'>
-            {titan_html}
-            <div class='pantheon-card card-1st'>
-                <div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>
-                {img_tag}
-                <div class='pantheon-name'>{u_nom}</div>
-                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
-            </div>
-        </div>
-        """
+        html_pantheon += f"<div class='pantheon-card card-1st'><div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
     else:
         html_pantheon += "<div class='pantheon-card card-1st' style='opacity:0.2;'><div class='pantheon-rank'>#1 ARCHITECTE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
@@ -1019,22 +1012,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[2]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥉</div>"
-        
-        # Application du Laser Anti-Fond ici !
-        fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
-        
-        html_pantheon += f"""
-        <div class='titan-holder titan-holder-3rd'>
-            {titan_html}
-            <div class='pantheon-card card-3rd'>
-                <div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>
-                {img_tag}
-                <div class='pantheon-name'>{u_nom}</div>
-                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
-            </div>
-        </div>
-        """
+        html_pantheon += f"<div class='pantheon-card card-3rd'><div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
     else:
         html_pantheon += "<div class='pantheon-card card-3rd' style='opacity:0.2;'><div class='pantheon-rank'>#3 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
@@ -1052,7 +1030,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
         scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
         
-    import pandas as pd
     df_scores = pd.DataFrame(scores_data)
     
     html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
