@@ -10,6 +10,7 @@ from PIL import Image
 import io
 import numpy as np
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import re # Pour nettoyer le texte renvoyé par l'IA
 
 # ==========================================
@@ -381,58 +382,86 @@ def jouer_son_invisible(nom_fichier):
 # ==========================================
 import requests
 
-
-
-def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style):
+def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_theme):
     """
-    Envoie une requête à Gemini 1.5 Flash pour générer un familier SVG.
+    Envoie une requête à Gemini 1.5 Flash pour évoluer un familier SVG.
+    Version purifiée pour éviter les crashs de l'éditeur de code.
     """
-    # 1. Configuration de l'API avec ta clé secrète
+    # 1. Configuration de l'API
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
-    # 2. On utilise le modèle le plus rapide et gratuit
+    # 2. On utilise Flash pour la vitesse
     model = genai.GenerativeModel('gemini-flash-latest')
     
-    # 3. Le Prompt Absolu (celui qu'on a perfectionné ensemble)
-    prompt = f""""
-Tu es l'Architecte de la Matrice. Dessine un familier virtuel en code SVG pur.
-AUCUN TEXTE AVANT OU APRÈS. UNIQUEMENT LE <svg>...</svg>.
+    # 3. Désactivation des filtres de sécurité
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+    
+    # 4. Le Prompt Absolu
+    prompt = f"""
+    Tu es l'Architecte d'une matrice Cyberpunk. Dessine l'évolution d'un familier virtuel en code SVG pur.
+    AUCUN TEXTE AVANT OU APRÈS. UNIQUEMENT LA BALISE <svg> JUSQU'À </svg>.
 
-CONTEXTE : 
-- Forme actuelle : {forme_actuelle} 
-- Demande de mutation : {requete} 
-- Niveau du joueur : {niveau}
-- Style de jeu : {style} (Adapte les couleurs et la forme à ce style).
+    CONTEXTE DE L'ÉVOLUTION : 
+    - Forme de base (À CONSERVER ET FAIRE ÉVOLUER) : {forme_actuelle}
+    - Demande de mutation du joueur : {requete} 
+    - Niveau de puissance : {niveau}
+    - Alignement/Style : {style}
+    - Dernier marché parié (Thème) : '{dernier_theme}'
 
-RÈGLES STRICTES DE GÉNÉRATION (OBLIGATOIRES) :
-1. FORMAT : <svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">. Centre à (100,100).
-2. EFFET 3D : Utilise <defs> avec au moins un <radialGradient> pour donner du volume au corps principal.
-3. HALO ANIMÉ : Ajoute une forme avec <animate attributeName="stroke-opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite"/>
-4. YEUX VIVANTS : Les yeux DOIVENT être des <ellipse> brillantes. Ajoute dedans : <animate attributeName="ry" values="10;1;10" dur="4s" keyTimes="0;0.05;1" repeatCount="indefinite"/>
-5. SYMÉTRIE ET STYLE : Design plat, géométrie sacrée, Hyperpop/Cyberpunk.
-""""
+    RÈGLES STRICTES DE GÉNÉRATION (CRITIQUES) :
+    1. FORMAT : <svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">. Centré.
+    2. CONTINUITÉ : Ne crée pas une entité totalement différente de la forme de base.
+    3. PAS DE FILTRES : N'utilise AUCUN <filter>. Utilise des <radialGradient>.
+    4. ANIMATION TOTALE OBLIGATOIRE :
+       - Yeux : Clignement via <animate attributeName="ry" values="10;1;10" dur="4s" repeatCount="indefinite"/>.
+       - Bouche : Doit bouger ou mâcher.
+       - Membres : Doivent bouger via <animateTransform attributeName="transform" type="rotate" values="-10 100 100; 10 100 100; -10 100 100" dur="3s" repeatCount="indefinite"/>.
+    5. LE CLIN D'ŒIL : Intègre un petit objet représentant le thème '{dernier_theme}'.
+    """
     
     try:
-        # 4. Appel à la Matrice
-        reponse = model.generate_content(prompt)
-        code_brut = reponse.text
-        
-        # 5. Nettoyage Chirurgical (Pour enlever les ```xml au cas où l'IA en met)
+        # 5. Appel à la Matrice
+        reponse = model.generate_content(prompt, safety_settings=safety_settings)
         code_propre = reponse.text.strip()
+        
+        # 6. Nettoyage initial des balises markdown
+        if "```xml" in code_propre:
+            code_propre = code_propre.replace("```xml", "")
+        if "```html" in code_propre:
+            code_propre = code_propre.replace("```html", "")
         if "```" in code_propre:
-            # Extrait tout ce qui est entre <svg et </svg>
-            match = re.search(r'(<svg.*?</svg>)', code_propre, re.DOTALL | re.IGNORECASE)
-            if match:
-                code_propre = match.group(1)
+            code_propre = code_propre.replace("```", "")
+            
+        code_propre = code_propre.strip()
+        
+        # 7. Extraction Chirurgicale
+        match = re.search(r'(<svg.*?</svg>)', code_propre, re.DOTALL | re.IGNORECASE)
+        if match:
+            code_propre = match.group(1)
+        else:
+            if "<svg" in code_propre:
+                code_propre = code_propre[code_propre.find("<svg"):]
+                if "</svg>" not in code_propre:
+                    code_propre += "\n</svg>"
             else:
-                # Nettoyage de base si la regex échoue
-                lignes = code_propre.split('\n')
-                code_propre = '\n'.join([l for l in lignes if not l.startswith('```')])
+                code_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">{code_propre}</svg>'
                 
         return code_propre
         
     except Exception as e:
-        return f"Erreur de la Matrice : {e}"
+        # Renvoi d'un SVG de secours (Triple apostrophes utilisées ici pour sauver ton éditeur de code)
+        return f'''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="200" height="200" fill="#090014"/>
+            <text x="100" y="100" fill="#ff0055" font-family="Courier New" font-size="20" font-weight="bold" text-anchor="middle">API DOWN</text>
+            <circle cx="100" cy="120" r="10" fill="#ffff00">
+                <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>'''
 
 
 def charger_joueurs():
