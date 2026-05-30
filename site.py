@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG en curseur (Taille 64x64 Sécurisée), figé et visible avec aura."""
+    """Version originale et stable : aucun risque de corruption du code."""
     if not svg_code:
         return
 
@@ -27,49 +27,31 @@ def activer_curseur_symbiote(svg_code):
     import re
     import streamlit as st
 
-    # 1. Nettoyage de base
+    # 1. Le Nettoyage de base (Celui qui marchait dès le début)
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Sécurisation de l'enveloppe
+    # 2. Assurance-vie : on vérifie que la balise <svg> est bien là
     if not svg_curseur.lower().startswith("<svg"):
-        svg_curseur = f'<svg viewBox="0 0 200 200" width="64" height="64" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
+        svg_curseur = f'<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
 
-    # 3. CONGÉLATION (Détruit les animations pour éviter le bug de transparence)
-    svg_curseur = re.sub(r'<animate[^>]*>', '', svg_curseur, flags=re.IGNORECASE)
+    # 3. Miniaturisation SÉCURISÉE (Taille 48x48, parfait équilibre)
+    # On remplace uniquement la largeur et la hauteur sans toucher au reste du dessin !
+    svg_curseur = re.sub(r'width="[^"]*"', 'width="48"', svg_curseur, count=1, flags=re.IGNORECASE)
+    svg_curseur = re.sub(r'height="[^"]*"', 'height="48"', svg_curseur, count=1, flags=re.IGNORECASE)
 
-    # 4. Nettoyage des filtres flous et gros fonds
-    svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
-    svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
-    svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*>.*?</rect>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
-    svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*/>', '', svg_curseur, flags=re.IGNORECASE)
-
-    # 5. TAILLE OPTIMISÉE (64x64 - La limite parfaite pour tous les écrans)
-    svg_curseur = re.sub(r'(<svg[^>]*?)width="[^"]*"', r'\g<1>width="64"', svg_curseur, count=1, flags=re.IGNORECASE)
-    svg_curseur = re.sub(r'(<svg[^>]*?)height="[^"]*"', r'\g<1>height="64"', svg_curseur, count=1, flags=re.IGNORECASE)
-
-    # 6. INJECTION DE L'AURA (Les 4 petits carrés qui l'accompagnent)
-    particules_aura = """
-    <rect x="25" y="25" width="10" height="10" fill="#39ff14" opacity="0.9" />
-    <rect x="165" y="35" width="8" height="8" fill="#00ffff" opacity="0.9" />
-    <rect x="35" y="165" width="12" height="12" fill="#ff00ff" opacity="0.9" />
-    <rect x="160" y="160" width="9" height="9" fill="#ffff00" opacity="0.9" />
-    </svg>
-    """
-    svg_curseur = re.sub(r'</svg>', particules_aura, svg_curseur, flags=re.IGNORECASE)
-
-    # 7. Encodage et Déploiement
+    # 4. Encodage en Base64 et Injection
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # Le '32 32' place le clic exactement au milieu du curseur 64x64
+        # Le '24 24' place la zone de clic au centre (la moitié de 48)
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, auto !important;
             }}
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, pointer !important;
             }}
         </style>
         """
