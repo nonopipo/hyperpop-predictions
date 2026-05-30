@@ -1670,9 +1670,28 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     sub_msg = "BADGE 🎰 DÉBLOQUÉ !"
                     gain_type = "badge"
 
-                # 4. L'ANIMATION GENSHIN (Avec la vraie étoile visible)
+# 4. L'ANIMATION GENSHIN (Avec la vraie étoile visible ET SON SYNCHRONISÉ)
                 placeholder_gacha = st.empty()
                 
+                # --- NOUVEAU : PRÉPARATION DU SON À RETARDEMENT ---
+                try:
+                    import base64
+                    with open("validation.mp3", "rb") as f:
+                        b64_audio = base64.b64encode(f.read()).decode()
+                        # L'audio n'a plus d'autoplay. Le JS le déclenche au bout de 1100ms !
+                        lecteur_audio_retarde = f"""
+                        <audio id="gacha-boom" style="display:none;"><source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3"></audio>
+                        <script>
+                            setTimeout(function() {{
+                                var audio = document.getElementById('gacha-boom');
+                                if(audio) audio.play();
+                            }}, 1100); /* 1.1s = Le timing exact où l'étoile touche le centre */
+                        </script>
+                        """
+                except:
+                    lecteur_audio_retarde = ""
+                # ---------------------------------------------------
+
                 html_gacha = f"""
                 <style>
                     .gacha-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,0,16,0.98); z-index: 999999; display: flex; justify-content: center; align-items: center; overflow: hidden; }}
@@ -1686,7 +1705,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                         z-index: 10;
                     }}
                     
-                    /* LA TRAÎNÉE DE LA COMÈTE (Détachée et étirée en diagonale) */
+                    /* LA TRAÎNÉE DE LA COMÈTE */
                     .gacha-star-head::after {{
                         content: ''; position: absolute;
                         top: 50%; right: 50%;
@@ -1713,10 +1732,16 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     .gacha-strobe {{ position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; animation: strobe 0.2s 4 1.0s; z-index: 5; }}
                     @keyframes strobe {{ 0%, 100% {{ opacity: 0; }} 50% {{ opacity: 0.6; }} }}
                 </style>
-                <div class="gacha-screen"><div class="gacha-strobe"></div><div class="gacha-star-head"></div><div class="gacha-flash"></div><div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div></div>
+                <div class="gacha-screen">
+                    <div class="gacha-strobe"></div>
+                    <div class="gacha-star-head"></div>
+                    <div class="gacha-flash"></div>
+                    <div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div>
+                    {lecteur_audio_retarde}
+                </div>
                 """
                 
-                jouer_son_invisible("validation.mp3")
+                # Attention : J'ai retiré jouer_son_invisible("validation.mp3") ici, c'est le lecteur_audio_retarde qui s'en charge !
                 placeholder_gacha.markdown(html_gacha, unsafe_allow_html=True)
                 
                 import time
