@@ -907,15 +907,23 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     # ==========================================
     def nettoyer_svg_vagabond(svg_code):
         if not svg_code: return ""
-        # Laser anti-fond absolu
+        # 1. Destruction des commentaires HTML (qui font buguer Streamlit)
+        svg_code = re.sub(r'', '', svg_code, flags=re.DOTALL)
+        
+        # 2. Suppression des résidus markdown si l'IA en a laissé
+        svg_code = svg_code.replace("```xml", "").replace("```html", "").replace("```", "")
+        
+        # 3. Laser anti-fond absolu
         svg_code = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
         svg_code = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
         svg_code = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', svg_code, flags=re.IGNORECASE)
         
-        # On libère les dimensions pour que le CSS parent les contrôle
+        # 4. Libération des dimensions pour le CSS
         svg_code = re.sub(r'width="[^"]*"', 'width="100%"', svg_code, count=1, flags=re.IGNORECASE)
         svg_code = re.sub(r'height="[^"]*"', 'height="100%"', svg_code, count=1, flags=re.IGNORECASE)
-        return svg_code.replace('\n', ' ')
+        
+        # 5. On aplatit TOUT sur une seule ligne ! (CRITIQUE)
+        return svg_code.replace('\n', ' ').strip()
 
     familiers_html = ""
     trajectoires = ["roam-1", "roam-2", "roam-3", "roam-4"]
@@ -929,57 +937,53 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             # Positionnement et comportements aléatoires
             top = random.randint(5, 85)
             left = random.randint(5, 85)
-            duree = random.randint(15, 35) # Mouvement très lent et flottant
+            duree = random.randint(15, 35) # Mouvement lent et flottant
             delai = random.randint(0, 10)
             anim = random.choice(trajectoires)
             
-            # Injection de l'entité
-            familiers_html += f"""
-            <div class="roaming-pet" style="top: {top}vh; left: {left}vw; animation: {anim} {duree}s infinite ease-in-out {delai}s alternate;">
-                {svg_propre}
-            </div>
-            """
+            # ATTENTION : CRITIQUE ICI ! Tout est sur UNE ligne, SANS indentation
+            familiers_html += f'<div class="roaming-pet" style="top: {top}vh; left: {left}vw; animation: {anim} {duree}s infinite ease-in-out {delai}s alternate;">{svg_propre}</div>'
 
     # CSS des vagabonds (flottent au-dessus, mais ne bloquent pas les clics)
     st.markdown(f"""
-    <style>
-        .roaming-pet {{
-            position: fixed;
-            width: 70px;
-            height: 70px;
-            pointer-events: none; /* Traverse les clics */
-            z-index: 9999; /* Par-dessus la Matrice */
-            opacity: 0.65;
-            filter: drop-shadow(0 0 10px rgba(57, 255, 20, 0.5));
-            transition: opacity 0.3s;
-        }}
-        
-        /* 4 trajectoires stellaires différentes */
-        @keyframes roam-1 {{
-            0% {{ transform: translate(0, 0) rotate(-10deg) scale(1); }}
-            33% {{ transform: translate(30vw, -20vh) rotate(15deg) scale(1.2); }}
-            66% {{ transform: translate(-20vw, 30vh) rotate(-5deg) scale(0.9); }}
-            100% {{ transform: translate(10vw, 10vh) rotate(5deg) scale(1.1); }}
-        }}
-        @keyframes roam-2 {{
-            0% {{ transform: translate(0, 0) rotate(5deg) scale(1); }}
-            33% {{ transform: translate(-30vw, -10vh) rotate(-15deg) scale(1.1); }}
-            66% {{ transform: translate(25vw, 25vh) rotate(10deg) scale(0.8); }}
-            100% {{ transform: translate(-10vw, -20vh) rotate(-5deg) scale(1.2); }}
-        }}
-        @keyframes roam-3 {{
-            0% {{ transform: translate(0, 0) rotate(0deg) scale(1.2); }}
-            50% {{ transform: translate(40vw, 10vh) rotate(20deg) scale(0.8); }}
-            100% {{ transform: translate(-40vw, -10vh) rotate(-20deg) scale(1.2); }}
-        }}
-        @keyframes roam-4 {{
-            0% {{ transform: translate(0, 0) rotate(0deg) scale(0.9); }}
-            50% {{ transform: translate(-10vw, 40vh) rotate(-10deg) scale(1.3); }}
-            100% {{ transform: translate(10vw, -40vh) rotate(10deg) scale(0.9); }}
-        }}
-    </style>
-    {familiers_html}
-    """, unsafe_allow_html=True)
+<style>
+    .roaming-pet {{
+        position: fixed;
+        width: 70px;
+        height: 70px;
+        pointer-events: none; /* Traverse les clics */
+        z-index: 9999; /* Par-dessus la Matrice */
+        opacity: 0.65;
+        filter: drop-shadow(0 0 10px rgba(57, 255, 20, 0.5));
+        transition: opacity 0.3s;
+    }}
+    
+    /* 4 trajectoires stellaires différentes */
+    @keyframes roam-1 {{
+        0% {{ transform: translate(0, 0) rotate(-10deg) scale(1); }}
+        33% {{ transform: translate(30vw, -20vh) rotate(15deg) scale(1.2); }}
+        66% {{ transform: translate(-20vw, 30vh) rotate(-5deg) scale(0.9); }}
+        100% {{ transform: translate(10vw, 10vh) rotate(5deg) scale(1.1); }}
+    }}
+    @keyframes roam-2 {{
+        0% {{ transform: translate(0, 0) rotate(5deg) scale(1); }}
+        33% {{ transform: translate(-30vw, -10vh) rotate(-15deg) scale(1.1); }}
+        66% {{ transform: translate(25vw, 25vh) rotate(10deg) scale(0.8); }}
+        100% {{ transform: translate(-10vw, -20vh) rotate(-5deg) scale(1.2); }}
+    }}
+    @keyframes roam-3 {{
+        0% {{ transform: translate(0, 0) rotate(0deg) scale(1.2); }}
+        50% {{ transform: translate(40vw, 10vh) rotate(20deg) scale(0.8); }}
+        100% {{ transform: translate(-40vw, -10vh) rotate(-20deg) scale(1.2); }}
+    }}
+    @keyframes roam-4 {{
+        0% {{ transform: translate(0, 0) rotate(0deg) scale(0.9); }}
+        50% {{ transform: translate(-10vw, 40vh) rotate(-10deg) scale(1.3); }}
+        100% {{ transform: translate(10vw, -40vh) rotate(10deg) scale(0.9); }}
+    }}
+</style>
+{familiers_html}
+""", unsafe_allow_html=True)
 
 
     # ==========================================
@@ -1030,6 +1034,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
         scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
         
+    import pandas as pd
     df_scores = pd.DataFrame(scores_data)
     
     html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
