@@ -899,10 +899,64 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 elif st.session_state.page_actuelle == "🏆 Classement":
     st.subheader("L'AUTEL DES SOUVERAINS")
     
-    # 1. Extraction et tri brut des utilisateurs depuis la Matrice
+    # --- INJECTION DU DESIGN DU TITAN PARALLAXE ---
+    st.markdown("""
+    <style>
+        /* On transfère la flottaison et la rotation 3D de la carte vers le Holder Global */
+        .pantheon-card {
+            animation: none !important;
+            transform: none !important;
+        }
+        
+        .titan-holder {
+            position: relative;
+            transform-style: preserve-3d;
+            animation: float-holo 6s ease-in-out infinite alternate;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        /* Désynchronisation des animations de gravité */
+        .titan-holder-2nd { animation-delay: 0s; }
+        .titan-holder-1st { animation-delay: -2s; z-index: 10; }
+        .titan-holder-3rd { animation-delay: -4s; }
+        
+        /* L'interaction physique : Tout le bloc (carte + titan) bascule au survol */
+        .titan-holder:hover {
+            transform: translateY(-25px) scale(1.05) rotateX(18deg) rotateY(-12deg) !important;
+            z-index: 30 !important;
+        }
+        
+        /* LE TITAN SPECTRAL (L'animal géant en arrière-plan) */
+        .titan-spectre {
+            position: absolute;
+            top: -55%; /* Il dépasse largement par le haut de la carte */
+            left: 50%;
+            width: 240px;
+            height: 240px;
+            transform: translateX(-50%) translateZ(-90px) scale(1.7); /* Reculé profondément en 3D et agrandi */
+            opacity: 0.15; /* Look hologramme/fantomatique discret de base */
+            pointer-events: none;
+            z-index: -1;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        /* Réveil du Titan au survol du joueur : il s'illumine et s'approche */
+        .titan-holder:hover .titan-spectre {
+            opacity: 0.45;
+            transform: translateX(-50%) translateZ(-50px) scale(1.9);
+        }
+        
+        /* Forçage des néons au survol du Holder global */
+        .titan-holder-1st:hover .pantheon-card { box-shadow: -20px 20px 50px rgba(255, 255, 0, 0.5), inset 0 0 30px rgba(255, 255, 0, 0.4) !important; border-color: #ffffff !important; }
+        .titan-holder-2nd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(0, 255, 255, 0.5), inset 0 0 25px rgba(0, 255, 255, 0.4) !important; border-color: #ffffff !important; }
+        .titan-holder-3rd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(255, 0, 255, 0.5), inset 0 0 25px rgba(255, 0, 255, 0.4) !important; border-color: #ffffff !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # 1. Extraction et tri brut des utilisateurs
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
     
-    # 2. Construction HTML du Panthéon (Podium Physique : 2nd, 1er, 3ème)
+    # 2. Construction HTML du Panthéon avec les Titans 3D
     html_pantheon = "<div class='pantheon-container'>"
     
     # [GAUCHE : SECOND PLACE]
@@ -910,7 +964,22 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[1]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥈</div>"
-        html_pantheon += f"<div class='pantheon-card card-2nd'><div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+        
+        # Récupération et nettoyage du familier pour injection
+        fam_svg = u_data.get("familier_svg", "")
+        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        
+        html_pantheon += f"""
+        <div class='titan-holder titan-holder-2nd'>
+            {titan_html}
+            <div class='pantheon-card card-2nd'>
+                <div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>
+                {img_tag}
+                <div class='pantheon-name'>{u_nom}</div>
+                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
+            </div>
+        </div>
+        """
     else:
         html_pantheon += "<div class='pantheon-card card-2nd' style='opacity:0.2;'><div class='pantheon-rank'>#2 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
@@ -919,7 +988,21 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[0]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>👑</div>"
-        html_pantheon += f"<div class='pantheon-card card-1st'><div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+        
+        fam_svg = u_data.get("familier_svg", "")
+        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        
+        html_pantheon += f"""
+        <div class='titan-holder titan-holder-1st'>
+            {titan_html}
+            <div class='pantheon-card card-1st'>
+                <div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>
+                {img_tag}
+                <div class='pantheon-name'>{u_nom}</div>
+                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
+            </div>
+        </div>
+        """
     else:
         html_pantheon += "<div class='pantheon-card card-1st' style='opacity:0.2;'><div class='pantheon-rank'>#1 ARCHITECTE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
@@ -928,14 +1011,28 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         u_nom, u_data = utilisateurs_tries[2]
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥉</div>"
-        html_pantheon += f"<div class='pantheon-card card-3rd'><div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
+        
+        fam_svg = u_data.get("familier_svg", "")
+        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        
+        html_pantheon += f"""
+        <div class='titan-holder titan-holder-3rd'>
+            {titan_html}
+            <div class='pantheon-card card-3rd'>
+                <div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>
+                {img_tag}
+                <div class='pantheon-name'>{u_nom}</div>
+                <div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div>
+            </div>
+        </div>
+        """
     else:
         html_pantheon += "<div class='pantheon-card card-3rd' style='opacity:0.2;'><div class='pantheon-rank'>#3 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
         
     html_pantheon += "</div>"
     st.markdown(html_pantheon, unsafe_allow_html=True)
     
-    # 3. Le reste du classement sous forme de Tableau Global Hyper-Style
+    # 3. Le reste du classement sous forme de Tableau Global
     st.write("<br>", unsafe_allow_html=True)
     st.subheader("REGISTRE GLOBAL DES LOGS")
     
@@ -965,7 +1062,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             if mon_p:
                 pts = mon_p["credences"].get(q['resultat'], 0)
                 st.markdown(f"Tu avais parié : {pts}% | Points gagnés : +{pts}", unsafe_allow_html=True)
-
 elif st.session_state.page_actuelle == "➕ Créer":
     st.subheader("POSER UNE QUESTION")
     titre = st.text_input("La question :", placeholder="Exemple : Thomas aura-t-il son permis avant juin ?")
