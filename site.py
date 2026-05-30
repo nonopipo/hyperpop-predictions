@@ -941,7 +941,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     
     col_visu, col_console = st.columns([1, 2])
     
-with col_visu:
+    with col_visu:
         st.markdown("### Entité Actuelle")
         if familier_svg:
             # 1. Nettoyage d'urgence des impuretés (Markdown, sauts de lignes toxiques)
