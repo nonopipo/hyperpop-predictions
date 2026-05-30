@@ -19,47 +19,54 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG du joueur en curseur HD avec affinage des traits."""
+    """Transforme le SVG du joueur en curseur vectoriel pur (sans filtres)."""
     if not svg_code:
         return
 
     import base64
     import re
+    import streamlit as st
 
-    # 1. Nettoyage
+    # 1. Nettoyage de base
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Résolution Rétina (64x64 pour plus de netteté)
-    svg_curseur = re.sub(r'width="\d+"', 'width="64"', svg_curseur)
-    svg_curseur = re.sub(r'height="\d+"', 'height="64"', svg_curseur)
+    # 2. DESTRUCTION DES FILTRES DE FLOU (La cause du bug "traits épais")
+    # On retire les balises <filter>...</filter>
+    svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
+    # On retire les appels filter="url(#glow)"
+    svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 3. L'Affinage au Scalpel (Réduit l'épaisseur de TOUS les traits)
+    # 3. Calibrage Rétina (48x48 est la taille parfaite pour les OS modernes)
+    svg_curseur = re.sub(r'width="\d+"', 'width="48"', svg_curseur)
+    svg_curseur = re.sub(r'height="\d+"', 'height="48"', svg_curseur)
+
+    # 4. Affinage Mathématique Sécurisé (Division par 3 de l'épaisseur des traits restants)
     def affiner_trait(match):
-        epaisseur_origine = float(match.group(1))
-        # On divise l'épaisseur par 2.5 (en gardant au minimum 0.5px pour qu'il ne disparaisse pas)
-        nouvelle_epaisseur = max(0.5, epaisseur_origine / 2.5) 
-        return f'stroke-width="{nouvelle_epaisseur}"'
-    
-    # Cherche tous les stroke-width="X" et applique la réduction
+        try:
+            epaisseur = float(match.group(1))
+            # On divise par 3, avec un minimum de 0.3px pour ne pas effacer le trait
+            return f'stroke-width="{max(0.3, epaisseur / 3)}"'
+        except:
+            return match.group(0)
+            
     svg_curseur = re.sub(r'stroke-width="([0-9.]+)"', affiner_trait, svg_curseur)
 
-    # 4. Encodage et Injection
+    # 5. Encodage et Injection
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # Le '32 32' indique que le "bout de la flèche" est exactement au centre du dessin 64x64
+        # Le '24 24' place la pointe du clic exactement au milieu du dessin 48x48
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, auto !important;
             }}
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, pointer !important;
             }}
         </style>
         """
-        import streamlit as st
         st.markdown(css_curseur, unsafe_allow_html=True)
     except Exception as e:
         pass
