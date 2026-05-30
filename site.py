@@ -727,7 +727,7 @@ def cloturer_et_distribuer_badges(q_id, opt_gagnante):
         if q_db["id"] == q_id:
             q_db["statut"], q_db["resultat"] = "clos", opt_gagnante
     
-for p in [p for p in db["paris"] if p["id_question"] == q_id]:
+    for p in [p for p in db["paris"] if p["id_question"] == q_id]:
         joueur = p["joueur"]
         classe = db["utilisateurs"][joueur].get("classe_familier", "Équilibré")
         base_win = p["credences"].get(opt_gagnante, 0)
