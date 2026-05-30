@@ -1177,15 +1177,12 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     </style>
     """, unsafe_allow_html=True)
 
-    # ==========================================
-    # GÉNÉRATION DU BESTIAIRE
+# ==========================================
+    # GÉNÉRATION DU BESTIAIRE (VERSION BLINDÉE)
     # ==========================================
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
     html_bestiaire = "<div class='bestiaire-container'>"
     
-# ==========================================
-    # GÉNÉRATION DU BESTIAIRE (VERSION BLINDÉE)
-    # ==========================================
     for index, (u_nom, u_data) in enumerate(utilisateurs_tries):
         score = round(u_data.get('score', 0), 1)
         av = u_data.get("avatar")
@@ -1193,11 +1190,14 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         
         fam_svg = u_data.get("familier_svg", "")
         if fam_svg:
-            # On encode le SVG en base64 pour qu'il soit traité comme une image isolée
-            b64_svg = base64.b64encode(fam_svg.encode('utf-8')).decode('utf-8')
+            # 1. LE LASER ANTI-FOND : On détruit le carré noir en amont !
+            fam_svg_propre = nettoyer_svg_game(fam_svg)
+            
+            # 2. ENCODAGE BASE64 : On transforme le monstre purifié en image stable
+            b64_svg = base64.b64encode(fam_svg_propre.encode('utf-8')).decode('utf-8')
             fam_svg_display = f"<img src='data:image/svg+xml;base64,{b64_svg}' style='width:100%; height:100%; object-fit:contain;'>"
         else:
-            fam_svg_display = "<div style='color:#ff0055; font-size:0.8rem; text-align:center;'>[ INCUBATION ]</div>"
+            fam_svg_display = "<div style='color:#ff0055; font-size:0.9rem; text-align:center; font-family:monospace; font-weight:bold;'>[ INCUBATION ]</div>"
             
         badges = "".join(u_data.get("badges", []))
         
@@ -1215,6 +1215,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             </div>
         </div>
         """
+        
+    html_bestiaire += "</div>"
+    st.markdown(html_bestiaire, unsafe_allow_html=True)
         
     html_bestiaire += "</div>"
     st.markdown(html_bestiaire, unsafe_allow_html=True)
