@@ -1201,26 +1201,8 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             
         badges = "".join(u_data.get("badges", []))
         
-        html_bestiaire += f"""
-        <div class='bestiaire-card'>
-            <div class='bestiaire-rank'>#{index + 1}</div>
-            <div class='bestiaire-pet'>{fam_svg_display}</div>
-            <div class='bestiaire-info'>
-                {img_tag}
-                <div class='bestiaire-details'>
-                    <div class='bestiaire-name'>{u_nom}</div>
-                    <div class='bestiaire-score'>{score} PTS | {obtenir_rang(score)}</div>
-                    <div class='bestiaire-badges'>{badges}</div>
-                </div>
-            </div>
-        </div>
-        """
-        
-    html_bestiaire += "</div>"
-    st.markdown(html_bestiaire, unsafe_allow_html=True)
-        
-    html_bestiaire += "</div>"
-    st.markdown(html_bestiaire, unsafe_allow_html=True)
+        # 3. L'APLATISSEMENT : Tout sur une seule ligne pour berner le Markdown de Streamlit !
+        html_bestiaire += f"<div class='bestiaire-card'><div class='bestiaire-rank'>#{index + 1}</div><div class='bestiaire-pet'>{fam_svg_display}</div><div class='bestiaire-info'>{img_tag}<div class='bestiaire-details'><div class='bestiaire-name'>{u_nom}</div><div class='bestiaire-score'>{score} PTS | {obtenir_rang(score)}</div><div class='bestiaire-badges'>{badges}</div></div></div></div>"
         
     html_bestiaire += "</div>"
     st.markdown(html_bestiaire, unsafe_allow_html=True)
