@@ -908,15 +908,16 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 elif st.session_state.page_actuelle == "🏆 Classement":
     import re
     import json
+    import random
     import streamlit.components.v1 as components
-    import pandas as pd
     
-    st.subheader("L'AUTEL DES SOUVERAINS")
+    st.subheader("LE BESTIAIRE MATRICIEL")
+
+    st.markdown("<p style='color:#ff0055; font-weight:bold; font-size:1.2rem; text-align:center;'>🚨 INTRUSION DÉTECTÉE : Cliquez n'importe où sur l'écran, bougez la souris pour esquiver et visez avec le tir automatique ! (Max 3 cibles) 🚨</p>", unsafe_allow_html=True)
 
     # ==========================================
     # 🌟 MINIJEU CACHÉ : SURVIE MATRICIELLE 
     # ==========================================
-    # On place une ancre invisible pour que le jeu s'arrête si on change d'onglet
     st.markdown("<div id='cyber-game-anchor'></div>", unsafe_allow_html=True)
     
     def nettoyer_svg_game(svg_code):
@@ -936,18 +937,19 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         if nom_joueur != user and data_joueur.get("familier_svg"):
             bots_svgs.append(nettoyer_svg_game(data_joueur["familier_svg"]))
 
-    # FIX 1 : SI LE JOUEUR EST SEUL, ON CRÉE DES DRONES D'ENTRAÎNEMENT ROUGES
-    if len(bots_svgs) == 0:
+    # FIX 1 : MAX 3 ENNEMIS (Tirage au sort ou génération de drones)
+    if len(bots_svgs) > 3:
+        bots_svgs = random.sample(bots_svgs, 3)
+    elif len(bots_svgs) == 0:
         drone_rouge = "<svg viewBox='0 0 200 200' width='100%' height='100%' xmlns='[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)'><circle cx='100' cy='100' r='50' fill='#090014' stroke='#ff0055' stroke-width='6'/><circle cx='100' cy='100' r='15' fill='#00ffff'><animate attributeName='r' values='15;5;15' dur='1s' repeatCount='indefinite'/></circle><path d='M100 10 L100 40 M100 160 L100 190 M10 100 L40 100 M160 100 L190 100' stroke='#ff0055' stroke-width='6'><animateTransform attributeName='transform' type='rotate' values='0 100 100; 360 100 100' dur='4s' repeatCount='indefinite'/></path></svg>"
-        bots_svgs = [drone_rouge, drone_rouge, drone_rouge, drone_rouge] # 4 drones agressifs
+        bots_svgs = [drone_rouge, drone_rouge, drone_rouge] # Seulement 3 drones
 
     bots_json = json.dumps(bots_svgs)
 
-    # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour Python)
+    # LE MOTEUR DE JEU (Mort définitive activée)
     js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
     if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
-    if (window.cyberKeyDown) window.removeEventListener("keydown", window.cyberKeyDown); // Nettoie l'ancien script
     var oldOverlay = document.getElementById("cyber-minigame");
     if (oldOverlay) oldOverlay.remove();
 
@@ -962,7 +964,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     var mouseY = window.innerHeight / 2;
     var dirX = 0, dirY = -1; 
     var playerHp = 100;
-    var playerLastShot = 0; // NOUVEAU : Le compteur de cadence de tir
+    var playerLastShot = 0; 
 
     window.cyberMouseMove = function(e) {
         var dx = e.clientX - mouseX;
@@ -979,7 +981,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     var bots = botsData.map(function(svg) {
         var el = document.createElement("div");
-        el.style.cssText = "position:absolute;width:70px;height:70px;transform:translate(-50%, -50%);transition: filter 0.1s;";
+        el.style.cssText = "position:absolute;width:80px;height:80px;transform:translate(-50%, -50%);transition: filter 0.1s;";
         el.innerHTML = svg;
         
         var hpBarContainer = document.createElement("div");
@@ -1000,7 +1002,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     function createExplosion(x, y, color) {
         var exp = document.createElement("div");
-        exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:120px;height:120px;background:radial-gradient(circle, #fff 0%, " + color + " 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
+        exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:150px;height:150px;background:radial-gradient(circle, #fff 0%, " + color + " 30%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
         overlay.appendChild(exp);
         var scale = 0, op = 1;
         var anim = setInterval(function() {
@@ -1017,16 +1019,14 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             return;
         }
 
-        // ==========================================
-        // 🔥 TIR AUTOMATIQUE DU JOUEUR (MACHINE GUN)
-        // ==========================================
+        // TIR AUTOMATIQUE
         playerLastShot++;
-        if(playerLastShot > 15) { // <-- CADENCE DE TIR : Baisse ce chiffre pour tirer plus vite !
+        if(playerLastShot > 12) { 
             var el = document.createElement("div");
             el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:30px;height:8px;background:#39ff14;box-shadow:0 0 20px #39ff14, 0 0 40px #ffff00;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:4px;";
             overlay.appendChild(el);
             lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
-            playerLastShot = 0; // On remet le compteur à zéro
+            playerLastShot = 0; 
         }
 
         bots.forEach(function(b) {
@@ -1036,14 +1036,14 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             var dist = Math.hypot(dx, dy);
             
             if(dist > 0) {
-                b.x += (dx/dist) * 2.5; 
-                b.y += (dy/dist) * 2.5;
+                b.x += (dx/dist) * 2.2; 
+                b.y += (dy/dist) * 2.2;
             }
             b.el.style.left = b.x + "px";
             b.el.style.top = b.y + "px";
 
             b.lastShot++;
-            if(b.lastShot > 80 && dist < 700) { 
+            if(b.lastShot > 70 && dist < 600) { 
                 var el = document.createElement("div");
                 el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:25px;height:6px;background:#ff00ff;box-shadow:0 0 20px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:3px;";
                 overlay.appendChild(el);
@@ -1054,8 +1054,8 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
         for(var i = lasers.length - 1; i >= 0; i--) {
             var l = lasers[i];
-            l.x += l.vx * 16; 
-            l.y += l.vy * 16;
+            l.x += l.vx * 18; 
+            l.y += l.vy * 18;
             l.el.style.left = l.x + "px";
             l.el.style.top = l.y + "px";
 
@@ -1077,14 +1077,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
                         if(b.hp <= 0) {
                             createExplosion(b.x, b.y, "#ff0055");
-                            b.el.style.display = "none";
-                            setTimeout(function() {
-                                b.x = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
-                                b.y = Math.random() * window.innerHeight;
-                                b.hp = 100;
-                                b.hpBar.style.width = "100%";
-                                b.el.style.display = "block";
-                            }, 2000);
+                            b.el.remove(); // MORT DÉFINITIVE : on supprime du DOM
                         }
                     }
                 });
@@ -1110,8 +1103,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     update();
     '''.replace("BOTS_JSON_HERE", bots_json)
 
-    # FIX 2 : INJECTION BLINDÉE VIA STREAMLIT COMPONENTS
-    # Cette méthode écrit un script directement dans la fenêtre principale et contourne la censure
     js_safe = json.dumps(js_game_engine)
     components.html(f"""
         <script>
@@ -1132,57 +1123,98 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     """, height=0, width=0)
 
     # ==========================================
-    # RETOUR AU PANTHÉON CLASSIQUE ORIGINAL 
+    # CSS DU BESTIAIRE
+    # ==========================================
+    st.markdown("""
+    <style>
+    .bestiaire-container { display: flex; flex-direction: column; gap: 25px; margin: 30px 0; }
+    .bestiaire-card { 
+        display: flex; 
+        background: linear-gradient(135deg, rgba(20,0,40,0.8) 0%, rgba(5,0,16,0.95) 100%);
+        border: 2px solid #ff00ff;
+        border-radius: 15px;
+        padding: 20px;
+        align-items: center;
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .bestiaire-card::before {
+        content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
+        transform: skewX(-25deg); transition: 0.5s; pointer-events: none;
+    }
+    .bestiaire-card:hover::before { left: 200%; transition: 0.7s; }
+    .bestiaire-card:hover {
+        transform: scale(1.02) translateX(10px);
+        box-shadow: -10px 0 30px #00ffff, inset 0 0 20px rgba(0, 255, 255, 0.2);
+        border-color: #00ffff;
+    }
+    .bestiaire-rank {
+        font-size: 3.5rem; font-family: 'Arial Black', sans-serif; font-style: italic;
+        color: #ffff00; text-shadow: 4px 4px 0px #ff00ff; min-width: 90px; text-align: center;
+    }
+    .bestiaire-pet {
+        width: 180px; height: 180px; display: flex; justify-content: center; align-items: center;
+        margin: 0 25px; filter: drop-shadow(0 0 25px rgba(57, 255, 20, 0.6));
+    }
+    .bestiaire-info {
+        display: flex; align-items: center; gap: 25px; flex-grow: 1;
+        border-left: 3px dashed rgba(255,255,255,0.2); padding-left: 25px;
+    }
+    .bestiaire-avatar {
+        width: 80px; height: 80px; border-radius: 12px; border: 3px solid #00ffff; image-rendering: pixelated; box-shadow: 0 0 15px #00ffff;
+    }
+    .bestiaire-empty-av {
+        width: 80px; height: 80px; border-radius: 12px; border: 3px dashed #ff00ff; display:flex; justify-content:center; align-items:center; font-size: 2.5rem; background: #111; color: #ff00ff;
+    }
+    .bestiaire-name {
+        font-size: 2rem; font-family: 'Arial Black', sans-serif; color: #fff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,255,255,0.8); margin-bottom: 5px;
+    }
+    .bestiaire-score { font-size: 1.4rem; color: #39ff14; font-weight: bold; font-family: 'Courier New', monospace; text-shadow: 0 0 5px rgba(57, 255, 20, 0.5); }
+    .bestiaire-badges { font-size: 1.6rem; letter-spacing: 6px; margin-top: 5px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ==========================================
+    # GÉNÉRATION DU BESTIAIRE
     # ==========================================
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
+    html_bestiaire = "<div class='bestiaire-container'>"
     
-    html_pantheon = "<div class='pantheon-container'>"
-    
-    if len(utilisateurs_tries) >= 2:
-        u_nom, u_data = utilisateurs_tries[1]
+    for index, (u_nom, u_data) in enumerate(utilisateurs_tries):
+        score = round(u_data.get('score', 0), 1)
         av = u_data.get("avatar")
-        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥈</div>"
-        html_pantheon += f"<div class='pantheon-card card-2nd'><div class='pantheon-rank' style='color:#00ffff;'>#2 ELITE</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
-    else:
-        html_pantheon += "<div class='pantheon-card card-2nd' style='opacity:0.2;'><div class='pantheon-rank'>#2 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        img_tag = f"<img src='data:image/png;base64,{av}' class='bestiaire-avatar'>" if av else "<div class='bestiaire-empty-av'>👤</div>"
         
-    if len(utilisateurs_tries) >= 1:
-        u_nom, u_data = utilisateurs_tries[0]
-        av = u_data.get("avatar")
-        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>👑</div>"
-        html_pantheon += f"<div class='pantheon-card card-1st'><div class='pantheon-rank' style='color:#ffff00;'>👑 ORACLE #1</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
-    else:
-        html_pantheon += "<div class='pantheon-card card-1st' style='opacity:0.2;'><div class='pantheon-rank'>#1 ARCHITECTE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        fam_svg = u_data.get("familier_svg", "")
+        if fam_svg:
+            fam_svg_propre = nettoyer_svg_game(fam_svg) # Utilise la même fonction de nettoyage (100% de taille et sans fond)
+        else:
+            fam_svg_propre = "<div style='font-family:monospace; color:#ff0055; font-weight:bold; font-size:1.1rem; text-align:center;'>[ EN INCUBATION ]</div>"
+            
+        badges = "".join(u_data.get("badges", []))
         
-    if len(utilisateurs_tries) >= 3:
-        u_nom, u_data = utilisateurs_tries[2]
-        av = u_data.get("avatar")
-        img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥉</div>"
-        html_pantheon += f"<div class='pantheon-card card-3rd'><div class='pantheon-rank' style='color:#ff00ff;'>#3 AGENT</div>{img_tag}<div class='pantheon-name'>{u_nom}</div><div class='pantheon-pts'>{round(u_data.get('score', 0), 1)} PTS</div></div>"
-    else:
-        html_pantheon += "<div class='pantheon-card card-3rd' style='opacity:0.2;'><div class='pantheon-rank'>#3 NODE</div><div class='pantheon-empty-av'>🛸</div><div class='pantheon-name'>Vide</div><div class='pantheon-pts'>0 PTS</div></div>"
+        html_bestiaire += f"""
+        <div class='bestiaire-card'>
+            <div class='bestiaire-rank'>#{index + 1}</div>
+            <div class='bestiaire-pet'>{fam_svg_propre}</div>
+            <div class='bestiaire-info'>
+                {img_tag}
+                <div class='bestiaire-details'>
+                    <div class='bestiaire-name'>{u_nom}</div>
+                    <div class='bestiaire-score'>{score} PTS | {obtenir_rang(score)}</div>
+                    <div class='bestiaire-badges'>{badges}</div>
+                </div>
+            </div>
+        </div>
+        """
         
-    html_pantheon += "</div>"
-    st.markdown(html_pantheon, unsafe_allow_html=True)
+    html_bestiaire += "</div>"
+    st.markdown(html_bestiaire, unsafe_allow_html=True)
     
-    st.write("<br>", unsafe_allow_html=True)
-    st.subheader("REGISTRE GLOBAL DES LOGS")
-    
-    scores_data = []
-    for k, v in utilisateurs_tries:
-        av_b64 = v.get("avatar")
-        img_html = f"<img src='data:image/png;base64,{av_b64}' class='avatar-pixel' style='width:28px; height:28px; margin-right:8px;'>" if av_b64 else "👤 "
-        joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
-        scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
-        
-    df_scores = pd.DataFrame(scores_data)
-    
-    html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
-    for _, row in df_scores.iterrows():
-        html_table += f"<tr><td>{row['Joueur']}</td><td>{row['Niveau']}</td><td>{row['Points']}</td></tr>"
-    html_table += "</tbody></table>"
-    st.markdown(html_table, unsafe_allow_html=True)
-    
+    # 4. Historique classique des anciens marchés clos
     st.write("<br><br>", unsafe_allow_html=True)
     st.subheader("HISTORIQUE DES RÉSULTATS")
     closes = [q for q in db["questions"] if q["statut"] == "clos"]
