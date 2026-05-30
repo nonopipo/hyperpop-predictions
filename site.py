@@ -944,14 +944,26 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     with col_visu:
         st.markdown("### Entité Actuelle")
         if familier_svg:
-            # 1. Nettoyage d'urgence des impuretés (Markdown, sauts de lignes toxiques)
-            svg_propre = familier_svg.replace("```xml", "").replace("```html", "").replace("```", "").strip()
+            import re
             
-            # 2. Restauration de l'enveloppe si l'IA l'a oubliée
-            if not svg_propre.lower().startswith("<svg"):
-                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">{svg_propre}</svg>'
+            # 1. Destruction des commentaires HTML (C'EST ÇA QUI FAIT BUGUER STREAMLIT)
+            svg_propre = re.sub(r'<!--.*?-->', '', familier_svg, flags=re.DOTALL)
             
-            # 3. La Cage de Confinement (Force le rendu visuel 2D)
+            # 2. Suppression du formatage texte (```xml)
+            svg_propre = svg_propre.replace("```xml", "").replace("```html", "").replace("```", "").strip()
+            
+            # 3. Extraction chirurgicale stricte
+            match = re.search(r'(<svg.*?</svg>)', svg_propre, re.DOTALL | re.IGNORECASE)
+            if match:
+                svg_propre = match.group(1)
+            elif not svg_propre.lower().startswith("<svg"):
+                # Si l'IA a complètement oublié la balise principale
+                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">{svg_propre}</svg>'
+            
+            # 4. Aplatissement (Empêche Streamlit de transformer les lignes en paragraphes texte)
+            svg_propre = svg_propre.replace("\n", " ")
+            
+            # 5. La Cage de Confinement 
             html_cage = f"""
             <div style="display: flex; justify-content: center; align-items: center; width: 100%; padding: 20px;">
                 <div style="background: radial-gradient(circle, #1a0033 0%, #050010 80%); border: 2px solid #39ff14; box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); border-radius: 15px; padding: 10px;">
