@@ -688,7 +688,6 @@ with st.sidebar:
     # On affiche l'avatar, le nom et les badges ensemble
     st.markdown(f"<h3 style='margin-bottom:0;'>{html_avatar}{user} {mes_badges}</h3>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color:#39ff14; text-shadow: none;'>Niveau : {obtenir_rang(score_user)}</h4>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color:#39ff14; text-shadow: none;'>Niveau : {obtenir_rang(score_user)}</h4>", unsafe_allow_html=True)
     st.metric(label="Total des points", value=f"{round(score_user, 1)}")
     # --- NOUVEAU : AFFICHAGE DU PORTEFEUILLE ---
     brins_user = db["utilisateurs"][user].get("brins_adn", 0)
