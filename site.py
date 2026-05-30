@@ -1150,16 +1150,17 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     u_data = db["utilisateurs"][user]
     points_actuels = u_data.get("score", 0)
     brins_actuels = u_data.get("brins_adn", 0)
-    niveau_actuel = obtenir_rang(points_actuels) # Ta fonction qui calcule le niveau
+    niveau_actuel = obtenir_rang(points_actuels) 
     
-    # On récupère son familier actuel (s'il en a un)
+    # On récupère son familier actuel 
     familier_svg = u_data.get("familier_svg", None)
     forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
     
     st.write(f"**🧬 Brins d'ADN disponibles :** {round(brins_actuels, 1)}")
+    
     # --- RADAR DE DIAGNOSTIC ---
     if st.button("📡 Scan des modèles API disponibles"):
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) # ou st.secrets["bdd"]["GEMINI_API_KEY"] selon ce que tu as choisi
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) 
         st.write("Modèles détectés sur cette clé :")
         try:
             for m in genai.list_models():
@@ -1175,25 +1176,15 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
         st.markdown("### Entité Actuelle")
         if familier_svg:
             import re
-            
-            # 1. Destruction des commentaires HTML (C'EST ÇA QUI FAIT BUGUER STREAMLIT)
-            svg_propre = re.sub(r'<!--.*?-->', '', familier_svg, flags=re.DOTALL)
-            
-            # 2. Suppression du formatage texte (```xml)
+            svg_propre = re.sub(r'', '', familier_svg, flags=re.DOTALL)
             svg_propre = svg_propre.replace("```xml", "").replace("```html", "").replace("```", "").strip()
-            
-            # 3. Extraction chirurgicale stricte
             match = re.search(r'(<svg.*?</svg>)', svg_propre, re.DOTALL | re.IGNORECASE)
             if match:
                 svg_propre = match.group(1)
             elif not svg_propre.lower().startswith("<svg"):
-                # Si l'IA a complètement oublié la balise principale
-                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">{svg_propre}</svg>'
-            
-            # 4. Aplatissement (Empêche Streamlit de transformer les lignes en paragraphes texte)
+                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">{svg_propre}</svg>'
             svg_propre = svg_propre.replace("\n", " ")
             
-            # 5. La Cage de Confinement 
             html_cage = f"""
             <div style="display: flex; justify-content: center; align-items: center; width: 100%; padding: 20px;">
                 <div style="background: radial-gradient(circle, #1a0033 0%, #050010 80%); border: 2px solid #39ff14; box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); border-radius: 15px; padding: 10px;">
@@ -1207,14 +1198,13 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
             
     with col_console:
         st.markdown("### Terminal de Mutation (Coût : 50 Brins)")
-        
         nouvelle_requete = st.text_input("Saisissez la mutation désirée :", placeholder="ex: Ajoute des ailes de néon rouge")
         options_alignement = [
                     "Équilibré (Gain normal | Perte normale)",
                     "Kamikaze (Gain +15% | Perte +10% en cas d'échec)",
                     "Prudent (Gain normal | Bouclier : Perte réduite de 15%)"
                 ]
-        style_joueur = st.selectbox("Alignement de l'Entité (Impacte vos paris) :", options_alignement)
+        style_joueur = st.selectbox("Alignement de l'Entité :", options_alignement)
     
         if st.button("Lancer la Séquence 🧬"):
             if brins_actuels < 50:
@@ -1222,41 +1212,139 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
             elif len(nouvelle_requete) < 5:
                 st.warning("Soyez plus précis dans votre demande de mutation.")
             else:
-                with st.spinner("Transmission des données vers l'Architecte (Gemini API)..."):
+                # --- Récupération du dernier thème ---
+                paris_du_joueur = [p for p in db.get("paris", []) if p["joueur"] == user]
+                if paris_du_joueur:
+                    id_dernier_pari = paris_du_joueur[-1]["id_question"]
+                    question_liee = next((q for q in db["questions"] if q["id"] == id_dernier_pari), None)
+                    theme_a_envoyer = question_liee["titre"] if question_liee else "Cyberpunk"
+                else:
+                    theme_a_envoyer = "Cyberpunk"
+                
+                # ==========================================
+                # 1. ÉCRAN DE CHARGEMENT HACKER (PIMPÉ)
+                # ==========================================
+                placeholder_chargement = st.empty()
+                html_loader = """
+                <style>
+                    .cyber-loader-container { border: 2px solid #00ffff; background: rgba(0,20,40,0.8); padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px #00ffff, inset 0 0 15px #00ffff; margin-bottom: 20px;}
+                    .cyber-dna { font-size: 4rem; animation: spin-dna 1.5s linear infinite; display: inline-block; filter: drop-shadow(0 0 15px #39ff14); }
+                    @keyframes spin-dna { 100% { transform: rotateY(360deg); } }
+                    .cyber-text-glitch { color: #39ff14; font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; animation: glitch-anim 0.2s infinite; margin-top: 15px;}
+                    .cyber-bar { width: 100%; height: 12px; background: #000; border: 2px solid #ff00ff; margin-top: 20px; position: relative; overflow: hidden; }
+                    .cyber-bar-fill { height: 100%; background: #ff00ff; width: 0%; animation: fill-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate; box-shadow: 0 0 15px #ff00ff; }
+                    @keyframes fill-bar { 0% { width: 0%; } 100% { width: 100%; } }
+                </style>
+                <div class='cyber-loader-container'>
+                    <div class='cyber-dna'>🧬</div>
+                    <div class='cyber-text-glitch'>SYNTHÈSE GÉNÉTIQUE EN COURS...<br>CONTACT AVEC L'ARCHITECTE (API)</div>
+                    <div class='cyber-bar'><div class='cyber-bar-fill'></div></div>
+                </div>
+                """
+                placeholder_chargement.markdown(html_loader, unsafe_allow_html=True)
+                
+                # Appel Gemini
+                nouveau_svg = muter_entite_avec_gemini(
+                    forme_actuelle=forme_historique,
+                    requete=nouvelle_requete,
+                    niveau=points_actuels, 
+                    style=style_joueur,
+                    dernier_theme=theme_a_envoyer
+                )
+                
+                # On détruit l'écran de chargement
+                placeholder_chargement.empty()
+                
+                if nouveau_svg.startswith("<svg"):
+                    # ==========================================
+                    # 2. L'ANIMATION D'ÉVOLUTION POKÉMON (ÉPIQUE)
+                    # ==========================================
+                    import re
+                    def clean_evo(svg):
+                        if not svg: return "<div style='font-size:150px; text-align:center;'>🦠</div>"
+                        s = re.sub(r'', '', svg, flags=re.DOTALL)
+                        s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                        s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                        s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
+                        s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
+                        s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
+                        return s.replace('\n', ' ').strip()
                     
-                    # --- NOUVEAU : Récupération du dernier thème ---
-                    # On cherche le dernier pari du joueur pour l'intégrer au prompt
-                    paris_du_joueur = [p for p in db.get("paris", []) if p["joueur"] == user]
-                    if paris_du_joueur:
-                        id_dernier_pari = paris_du_joueur[-1]["id_question"]
-                        question_liee = next((q for q in db["questions"] if q["id"] == id_dernier_pari), None)
-                        theme_a_envoyer = question_liee["titre"] if question_liee else "Cyberpunk"
-                    else:
-                        theme_a_envoyer = "Cyberpunk" # Thème par défaut si aucun pari
-                    # -----------------------------------------------
-
-                    # 1. On appelle notre fonction avec LE NOUVEL ARGUMENT !
-                    nouveau_svg = muter_entite_avec_gemini(
-                        forme_actuelle=forme_historique,
-                        requete=nouvelle_requete,
-                        niveau=points_actuels, 
-                        style=style_joueur,
-                        dernier_theme=theme_a_envoyer # <--- L'ARGUMENT MANQUANT ÉTAIT LÀ !
-                    )
+                    svg_old_clean = clean_evo(familier_svg)
+                    svg_new_clean = clean_evo(nouveau_svg)
                     
-                    if nouveau_svg.startswith("<svg"):
-                        # 2. Si c'est un succès, on met à jour la base de données
-                        db["utilisateurs"][user]["brins_adn"] -= 50
-                        db["utilisateurs"][user]["familier_svg"] = nouveau_svg
-                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
-                        db["utilisateurs"][user]["classe_familier"] = style_joueur
+                    html_evolution = f"""
+                    <style>
+                        /* Fond d'écran total qui bloque tout */
+                        .evo-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #150030 0%, #000000 100%); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }}
+                        .evo-stage {{ position: relative; width: 450px; height: 450px; display: flex; justify-content: center; align-items: center; }}
+                        .evo-sprite {{ position: absolute; width: 100%; height: 100%; }}
                         
-                        # 3. Sauvegarde sur GitHub
-                        save_data(db)
+                        /* Le système de clignotement alterné */
+                        .sprite-old {{ animation: poke-evo-old 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
+                        .sprite-new {{ opacity: 0; animation: poke-evo-new 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
                         
-                        st.success("Mutation réussie ! Entité mise à jour.")
-                        st.balloons()
-                        st.rerun()
-                    else:
-                        st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
-                        st.code(nouveau_svg)
+                        /* L'explosion d'énergie */
+                        .evo-flashbang {{ position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; animation: bang 5.5s ease-out forwards; box-shadow: 0 0 200px 100px white; }}
+                        .evo-text {{ color: white; font-family: 'Arial Black', sans-serif; font-size: 2.5rem; margin-top: 50px; text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff; animation: pulse-text 0.5s infinite alternate; }}
+                        
+                        /* KEYFRAMES DU CHAOS (L'accélération) */
+                        @keyframes poke-evo-old {{
+                            0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }}
+                            10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }}
+                            25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }}
+                            40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }}
+                            52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }}
+                            62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }}
+                            100% {{ opacity: 0; }}
+                        }}
+                        @keyframes poke-evo-new {{
+                            0% {{ opacity: 0; }}
+                            15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }}
+                            30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }}
+                            45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }}
+                            55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }}
+                            65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }}
+                            70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }}
+                            85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }}
+                            100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }}
+                        }}
+                        @keyframes bang {{ 0%, 65% {{ opacity: 0; transform: scale(0); }} 70% {{ opacity: 1; transform: scale(50); }} 85%, 100% {{ opacity: 0; transform: scale(100); }} }}
+                        @keyframes pulse-text {{ 0% {{ opacity: 0.5; transform: scale(0.95); }} 100% {{ opacity: 1; transform: scale(1.05); }} }}
+                    </style>
+                    
+                    <div class="evo-screen">
+                        <div class="evo-stage">
+                            <div class="evo-sprite sprite-old">{svg_old_clean}</div>
+                            <div class="evo-sprite sprite-new">{svg_new_clean}</div>
+                            <div class="evo-flashbang"></div>
+                        </div>
+                        <div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !</div>
+                    </div>
+                    """
+                    
+                    # On affiche l'animation plein écran
+                    placeholder_evo = st.empty()
+                    placeholder_evo.markdown(html_evolution, unsafe_allow_html=True)
+                    jouer_son_invisible("validation.mp3") 
+                    
+                    # On fige le script Python pendant 6 secondes (Le temps que le CSS fasse son show explosif)
+                    import time
+                    time.sleep(6)
+                    
+                    # On efface l'écran d'évolution
+                    placeholder_evo.empty()
+                    
+                    # 3. Mise à jour de la BDD et rafraîchissement
+                    db["utilisateurs"][user]["brins_adn"] -= 50
+                    db["utilisateurs"][user]["familier_svg"] = nouveau_svg
+                    db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
+                    db["utilisateurs"][user]["classe_familier"] = style_joueur
+                    save_data(db)
+                    
+                    st.balloons()
+                    st.rerun()
+                    
+                else:
+                    st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
+                    st.code(nouveau_svg)
