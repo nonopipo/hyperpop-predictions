@@ -508,15 +508,24 @@ def init_db(joueurs_autorises):
     global db # On manipule la variable globale chargée
     modifie = False
     
-    # MAJ Structure Utilisateurs (avec support Avatar)
-# MAJ Structure Utilisateurs (avec support Avatar et Brins ADN)
+    # MAJ Structure Utilisateurs (avec support Avatar et Brins ADN)
     for nom in joueurs_autorises.keys():
         if nom not in db["utilisateurs"]:
-            db["utilisateurs"][nom] = {"score": 0, "brins_adn": 0, "classe_familier": "Équilibré", "historique_vu": [], "badges": [], "gains_historique": [], "avatar": None}
+            # ---> NOUVEAU JOUEUR : 50 BRINS D'ADN AU DÉMARRAGE <---
+            db["utilisateurs"][nom] = {
+                "score": 0, 
+                "brins_adn": 50, 
+                "classe_familier": "Équilibré", 
+                "historique_vu": [], 
+                "badges": [], 
+                "gains_historique": [], 
+                "avatar": None
+            }
             modifie = True
         else:
+            # ---> MISE À JOUR (Si le champ manquait, on donne 50 aussi) <---
             if "classe_familier" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["classe_familier"] = "Équilibré"; modifie = True
-            if "brins_adn" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["brins_adn"] = 0; modifie = True
+            if "brins_adn" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["brins_adn"] = 50; modifie = True
             if "badges" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["badges"] = []; modifie = True
             if "gains_historique" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["gains_historique"] = []; modifie = True
             if "avatar" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["avatar"] = None; modifie = True
