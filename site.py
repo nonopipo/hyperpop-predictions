@@ -480,11 +480,13 @@ def init_db(joueurs_autorises):
     modifie = False
     
     # MAJ Structure Utilisateurs (avec support Avatar)
+# MAJ Structure Utilisateurs (avec support Avatar et Brins ADN)
     for nom in joueurs_autorises.keys():
         if nom not in db["utilisateurs"]:
-            db["utilisateurs"][nom] = {"score": 0, "historique_vu": [], "badges": [], "gains_historique": [], "avatar": None}
+            db["utilisateurs"][nom] = {"score": 0, "brins_adn": 0, "historique_vu": [], "badges": [], "gains_historique": [], "avatar": None}
             modifie = True
         else:
+            if "brins_adn" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["brins_adn"] = 0; modifie = True
             if "badges" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["badges"] = []; modifie = True
             if "gains_historique" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["gains_historique"] = []; modifie = True
             if "avatar" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["avatar"] = None; modifie = True
@@ -621,6 +623,10 @@ with st.sidebar:
     st.markdown(f"<h4 style='color:#39ff14; text-shadow: none;'>Niveau : {obtenir_rang(score_user)}</h4>", unsafe_allow_html=True)
     st.markdown(f"<h4 style='color:#39ff14; text-shadow: none;'>Niveau : {obtenir_rang(score_user)}</h4>", unsafe_allow_html=True)
     st.metric(label="Total des points", value=f"{round(score_user, 1)}")
+    # --- NOUVEAU : AFFICHAGE DU PORTEFEUILLE ---
+    brins_user = db["utilisateurs"][user].get("brins_adn", 0)
+    st.metric(label="🧬 Brins d'ADN", value=f"{round(brins_user, 1)}")
+    # -------------------------------------------
     
     # PROGRESSION (LEVELLING)
     if score_user < 100: pourcentage = (score_user / 100) * 33.33
@@ -687,6 +693,7 @@ def cloturer_et_distribuer_badges(q_id, opt_gagnante):
         pts = p["credences"].get(opt_gagnante, 0)
         joueur = p["joueur"]
         db["utilisateurs"][joueur]["score"] += pts
+        db["utilisateurs"][joueur]["brins_adn"] = db["utilisateurs"][joueur].get("brins_adn", 0) + pts
         
         # 1. Data Viz : Sauvegarde dans l'historique
         db["utilisateurs"][joueur].setdefault("gains_historique", []).append(pts)
@@ -982,13 +989,14 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     # On récupère les infos du joueur connecté
     u_data = db["utilisateurs"][user]
     points_actuels = u_data.get("score", 0)
+    brins_actuels = u_data.get("brins_adn", 0)
     niveau_actuel = obtenir_rang(points_actuels) # Ta fonction qui calcule le niveau
     
     # On récupère son familier actuel (s'il en a un)
     familier_svg = u_data.get("familier_svg", None)
     forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
     
-    st.write(f"**Crédits disponibles :** {round(points_actuels, 1)} PTS")
+    st.write(f"**🧬 Brins d'ADN disponibles :** {round(brins_actuels, 1)}")
     # --- RADAR DE DIAGNOSTIC ---
     if st.button("📡 Scan des modèles API disponibles"):
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) # ou st.secrets["bdd"]["GEMINI_API_KEY"] selon ce que tu as choisi
@@ -1038,14 +1046,14 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
             st.info("Aucune entité détectée. L'incubation est requise.")
             
     with col_console:
-        st.markdown("### Terminal de Mutation (Coût : 50 PTS)")
+        st.markdown("### Terminal de Mutation (Coût : 50 Brins)")
         
         nouvelle_requete = st.text_input("Saisissez la mutation désirée :", placeholder="ex: Ajoute des ailes de néon rouge")
         style_joueur = st.selectbox("Alignement de l'Entité :", ["Kamikaze (Agressif)", "Prudent (Défensif)", "Équilibré"])
         
         if st.button("Lancer la Séquence 🧬"):
-            if points_actuels < 50:
-                st.error("Crédits insuffisants. La Matrice refuse l'accès.")
+            if brins_actuels < 50:
+                st.error(Brins d'ADN insuffisants. L'incubation demande plus de matière.")
             elif len(nouvelle_requete) < 5:
                 st.warning("Soyez plus précis dans votre demande de mutation.")
             else:
@@ -1060,7 +1068,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     
                     if nouveau_svg.startswith("<svg"):
                         # 2. Si c'est un succès, on met à jour la base de données
-                        db["utilisateurs"][user]["score"] -= 50 # On débite 50 points
+                        db["utilisateurs"][user]["brins_adn"] -= 50 # On débite 50 points
                         db["utilisateurs"][user]["familier_svg"] = nouveau_svg
                         db["utilisateurs"][user]["familier_desc"] = nouvelle_requete # On sauvegarde pour la prochaine mutation
                         
