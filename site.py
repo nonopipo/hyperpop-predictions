@@ -1754,240 +1754,312 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
     import re
     import streamlit.components.v1 as components
 
-    st.subheader("⚔️ L'ARÈNE DU CODE (Test d'Animation)")
-    st.markdown("Bienvenue dans le simulateur de combat. Observez la chorégraphie générée par l'Architecte.")
-
-    # 1. On récupère ton SVG et on le nettoie
+    st.subheader("⚔️ L'ARÈNE DES SYMBIOTES (JcJ)")
+    
     u_data = db["utilisateurs"].get(user, {})
-    ton_svg = u_data.get("familier_svg", "")
+    attaques_p1 = u_data.get("attaques")
     
-    # Fonction de nettoyage rapide (sans fond)
-    def clean_svg_arena(svg_code):
-        if not svg_code: return ""
-        s = re.sub(r'', '', svg_code, flags=re.DOTALL)
-        s = s.replace("```xml", "").replace("```html", "").replace("```", "")
-        s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-        s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-        s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
-        s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
-        s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
-        return s.replace('\n', ' ').strip()
-
-    ton_svg_propre = clean_svg_arena(ton_svg)
+    if not attaques_p1:
+        st.warning("⚠️ Votre entité n'a pas encore de capacités de combat. Allez muter dans la Clinique Cybernétique !")
+        st.stop()
+        
+    # ==========================================
+    # 1. GESTION DU DECK DE DÉFENSE (Hors-Ligne)
+    # ==========================================
+    st.markdown("### 🛡️ Matrice de Défense (Hors-ligne)")
+    st.write("Séquence automatique utilisée si un autre joueur vous attaque pendant votre absence.")
     
-    # 2. On choisit un adversaire aléatoire
-    adversaires = [v.get("familier_svg") for k, v in db["utilisateurs"].items() if k != user and v.get("familier_svg")]
-    if adversaires:
-        adv_svg = random.choice(adversaires)
-    else:
-        # Drone Rouge de base s'il n'y a personne d'autre
-        adv_svg = "<svg viewBox='0 0 200 200' width='100%' height='100%' xmlns='[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)'><circle cx='100' cy='100' r='50' fill='#090014' stroke='#ff0055' stroke-width='6'/><circle cx='100' cy='100' r='15' fill='#00ffff'></circle></svg>"
+    deck_actuel = u_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
     
-    adv_svg_propre = clean_svg_arena(adv_svg)
+    col1, col2, col3 = st.columns(3)
+    # On récupère les noms générés par Gemini pour que le joueur sache ce qu'il équipe !
+    choix = {
+        "pierre": f"🪨 {attaques_p1.get('pierre', {}).get('nom', 'Blocage')}", 
+        "feuille": f"🍃 {attaques_p1.get('feuille', {}).get('nom', 'Zone')}", 
+        "ciseaux": f"✂️ {attaques_p1.get('ciseaux', {}).get('nom', 'Lame')}"
+    }
+             
+    nouveau_deck = []
+    with col1: nouveau_deck.append(st.selectbox("Tour 1", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[0]), format_func=lambda x: choix[x], key="def1"))
+    with col2: nouveau_deck.append(st.selectbox("Tour 2", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[1]), format_func=lambda x: choix[x], key="def2"))
+    with col3: nouveau_deck.append(st.selectbox("Tour 3", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[2]), format_func=lambda x: choix[x], key="def3"))
+    
+    if nouveau_deck != deck_actuel:
+        db["utilisateurs"][user]["deck_combat"] = nouveau_deck
+        save_data(db)
+        st.success("Matrice de défense mise à jour ! La sauvegarde est active.")
+        
+    st.markdown("---")
+    st.markdown("### ⚔️ Lancer un Assaut")
+    
+    # ==========================================
+    # 2. MATCHMAKING ET DECK D'ATTAQUE
+    # ==========================================
+    adversaires_valides = [k for k, v in db["utilisateurs"].items() if k != user and "attaques" in v]
+    
+    if not adversaires_valides:
+        st.info("Aucun autre joueur n'a encore muté son familier. Entraînez-vous en attendant !")
+        st.stop()
+        
+    adv_nom = st.selectbox("Cible de l'assaut :", adversaires_valides)
+    adv_data = db["utilisateurs"][adv_nom]
+    attaques_p2 = adv_data.get("attaques", {})
+    deck_p2 = adv_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
+    
+    st.write(f"Saisissez votre séquence d'attaque contre l'IA de **{adv_nom}** :")
+    colA, colB, colC = st.columns(3)
+    deck_attaque = []
+    with colA: deck_attaque.append(st.selectbox("Atk Tour 1", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk1"))
+    with colB: deck_attaque.append(st.selectbox("Atk Tour 2", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk2"))
+    with colC: deck_attaque.append(st.selectbox("Atk Tour 3", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk3"))
+    
+    if st.button("⚡ DÉMARRER L'AFFRONTEMENT ⚡", use_container_width=True):
+        
+        # ==========================================
+        # 3. LE MOTEUR LOGIQUE (Génération du combat)
+        # ==========================================
+        victoires = {"pierre": "ciseaux", "feuille": "pierre", "ciseaux": "feuille"}
+        script_combat = []
+        
+        for i in range(3):
+            coup1 = deck_attaque[i]
+            coup2 = deck_p2[i]
+            
+            nom_atk1 = attaques_p1.get(coup1, {}).get("nom", coup1).upper()
+            nom_atk2 = attaques_p2.get(coup2, {}).get("nom", coup2).upper()
+            
+            if coup1 == coup2:
+                vainqueur = 0
+                texte = f"CHOC ! [{nom_atk1}] annule [{nom_atk2}] ! Dégâts mineurs."
+                dmg1, dmg2 = 15, 15
+            elif victoires[coup1] == coup2:
+                vainqueur = 1
+                texte = f"BIM ! [{nom_atk1}] détruit [{nom_atk2}] ! Frappe critique !"
+                dmg1, dmg2 = 0, 40
+            else:
+                vainqueur = 2
+                texte = f"AÏE ! [{nom_atk2}] écrase [{nom_atk1}] ! Ta défense cède !"
+                dmg1, dmg2 = 40, 0
+                
+            script_combat.append({
+                "tour": i+1, "p1_move": coup1, "p2_move": coup2, 
+                "winner": vainqueur, "texte": texte, "dmg1": dmg1, "dmg2": dmg2
+            })
+            
+        script_json = json.dumps(script_combat)
 
-    # 3. Encodage B64 pour isolation parfaite dans l'iframe HTML
-    if ton_svg_propre:
-        b64_p1 = base64.b64encode(ton_svg_propre.encode('utf-8')).decode('utf-8')
-        img_p1 = f"data:image/svg+xml;base64,{b64_p1}"
-    else:
-        img_p1 = "" # Géré dans le HTML (Monstre vide)
+        # ==========================================
+        # 4. LE TRAITEMENT DES IMAGES (Anti-bug B64)
+        # ==========================================
+        def get_b64(svg_str):
+            if not svg_str: return ""
+            s = re.sub(r'', '', svg_str, flags=re.DOTALL)
+            s = s.replace("```xml", "").replace("```html", "").replace("```", "")
+            s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+            s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+            s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
+            s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
+            s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
+            s = s.replace('\n', ' ').strip()
+            return "data:image/svg+xml;base64," + base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
-    b64_p2 = base64.b64encode(adv_svg_propre.encode('utf-8')).decode('utf-8')
-    img_p2 = f"data:image/svg+xml;base64,{b64_p2}"
+        # Joueur 1 (Toi)
+        b1_base = get_b64(u_data.get("familier_svg"))
+        b1_p = get_b64(attaques_p1.get("pierre", {}).get("svg_overlay"))
+        b1_f = get_b64(attaques_p1.get("feuille", {}).get("svg_overlay"))
+        b1_c = get_b64(attaques_p1.get("ciseaux", {}).get("svg_overlay"))
+        
+        # Joueur 2 (Adversaire)
+        b2_base = get_b64(adv_data.get("familier_svg"))
+        b2_p = get_b64(attaques_p2.get("pierre", {}).get("svg_overlay"))
+        b2_f = get_b64(attaques_p2.get("feuille", {}).get("svg_overlay"))
+        b2_c = get_b64(attaques_p2.get("ciseaux", {}).get("svg_overlay"))
 
-    # 4. LE SCRIPT DE COMBAT (Ce que l'IA génèrera plus tard)
-    script_combat = [
-        {"tour": 1, "attaquant": 1, "action": "dash", "texte": f"Ton entité charge à la vitesse de la lumière !", "dmg": 20},
-        {"tour": 2, "attaquant": 2, "action": "laser", "texte": f"L'adversaire riposte avec un rayon destructeur !", "dmg": 30},
-        {"tour": 3, "attaquant": 1, "action": "ultime", "texte": f"SURCHARGE DU NOYAU ! L'adversaire est désintégré !", "dmg": 100, "ko": True}
-    ]
-    script_json = json.dumps(script_combat)
+        # ==========================================
+        # 5. LE MOTEUR DE RENDU (Le Marionnettiste)
+        # ==========================================
+        html_arena = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <style>
+            @import url('[https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap)');
+            body {{ margin: 0; padding: 0; background-color: #050010; color: white; font-family: 'Courier Prime', monospace; overflow: hidden; }}
+            
+            .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; box-sizing: border-box; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
+            .grid {{ position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom; opacity: 0.5; bottom: -20%; }}
+            
+            /* BARRES DE VIE */
+            .hud {{ position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 10; }}
+            .hp-box {{ width: 35%; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 5px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
+            .hp-bar-bg {{ width: 100%; height: 15px; background: #333; position: relative; overflow: hidden; }}
+            .hp-bar-fill {{ height: 100%; background: #39ff14; width: 100%; transition: width 0.3s ease-out; box-shadow: 0 0 10px #39ff14; }}
+            .hp-name {{ font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; }}
+            
+            /* LES COMBATTANTS ET LES CALQUES (OVERLAYS) */
+            .stage {{ position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: space-between; padding: 0 100px; box-sizing: border-box; z-index: 5; }}
+            .fighter {{ position: relative; width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); transition: transform 0.2s; }}
+            .base-sprite {{ position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1; }}
+            .overlay-sprite {{ position: absolute; top:0; left:0; width: 100%; height: 100%; object-fit: contain; z-index: 2; opacity: 0; transition: opacity 0.3s; filter: drop-shadow(0 0 25px #00ffff); }}
+            
+            /* TEXTE */
+            .dialogue-box {{ position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,20,40,0.9); border-top: 3px solid #00ffff; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; font-size: 1.1rem; font-weight: bold; color: #00ffff; text-shadow: 0 0 5px #00ffff; }}
+            
+            /* ANIMATIONS PHYSIQUES */
+            .anim-dash-p1 {{ animation: dash-right 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }}
+            .anim-dash-p2 {{ animation: dash-left 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }}
+            @keyframes dash-right {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(350px) scale(1.2); filter: drop-shadow(0 0 40px #00ffff); }} 100% {{ transform: translateX(0); }} }}
+            @keyframes dash-left {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(-350px) scale(1.2); filter: drop-shadow(0 0 40px #ff00ff); }} 100% {{ transform: translateX(0); }} }}
+            
+            .anim-hit {{ animation: shake-hit 0.4s ease; filter: drop-shadow(0 0 50px red) brightness(2) !important; }}
+            @keyframes shake-hit {{ 0%, 100% {{ transform: translateX(0); }} 20% {{ transform: translateX(-15px) rotate(-10deg); }} 40% {{ transform: translateX(15px) rotate(10deg); }} 60% {{ transform: translateX(-10px); }} 80% {{ transform: translateX(10px); }} }}
+            
+            .anim-screen-shake {{ animation: global-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }}
+            @keyframes global-shake {{ 10%, 90% {{ transform: translate3d(-5px, 5px, 0); }} 20%, 80% {{ transform: translate3d(10px, -5px, 0); }} 30%, 50%, 70% {{ transform: translate3d(-15px, 10px, 0); }} 40%, 60% {{ transform: translate3d(15px, -10px, 0); }} }}
+            
+            .anim-ko {{ animation: fade-out-ko 2s forwards; filter: grayscale(1) brightness(0) !important; }}
+            @keyframes fade-out-ko {{ 100% {{ opacity:0; transform: translateY(50px) scale(0.5); }} }}
+        </style>
+        </head>
+        <body>
 
-    # 5. LE MOTEUR DE RENDU (HTML/CSS/JS)
-    html_arena = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        @import url('[https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap)');
-        body {{ margin: 0; padding: 0; background-color: #050010; color: white; font-family: 'Courier Prime', monospace; overflow: hidden; }}
-        
-        /* LE RING */
-        .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; box-sizing: border-box; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
-        .grid {{ position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom; opacity: 0.5; bottom: -20%; }}
-        
-        /* INTERFACE DES HP */
-        .hud {{ position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 10; }}
-        .hp-box {{ width: 35%; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 5px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
-        .hp-bar-bg {{ width: 100%; height: 15px; background: #333; position: relative; overflow: hidden; }}
-        .hp-bar-fill {{ height: 100%; background: #39ff14; width: 100%; transition: width 0.3s ease-out; box-shadow: 0 0 10px #39ff14; }}
-        .hp-name {{ font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; }}
-        
-        /* LES COMBATTANTS (Les fameux conteneurs "Marionnettes") */
-        .stage {{ position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: space-between; padding: 0 100px; box-sizing: border-box; z-index: 5; }}
-        .fighter {{ width: 150px; height: 150px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); transition: transform 0.2s; }}
-        .fighter img {{ width: 100%; height: 100%; object-fit: contain; }}
-        
-        /* LA BOÎTE DE DIALOGUE */
-        .dialogue-box {{ position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,20,40,0.9); border-top: 3px solid #00ffff; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; font-size: 1.2rem; font-weight: bold; color: #00ffff; text-shadow: 0 0 5px #00ffff; }}
-        
-        /* ==========================================
-           🎬 LES ANIMATIONS CSS (LA MAGIE)
-           ========================================== */
-        
-        /* Attaque au corps à corps (Dash) */
-        .anim-dash-p1 {{ animation: dash-right 0.6s cubic-bezier(0.25, 1, 0.5, 1); }}
-        .anim-dash-p2 {{ animation: dash-left 0.6s cubic-bezier(0.25, 1, 0.5, 1); }}
-        @keyframes dash-right {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(350px) scale(1.2); filter: drop-shadow(0 0 30px #00ffff); }} 100% {{ transform: translateX(0); }} }}
-        @keyframes dash-left {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(-350px) scale(1.2); filter: drop-shadow(0 0 30px #ff00ff); }} 100% {{ transform: translateX(0); }} }}
-        
-        /* Prendre un coup (Hit) */
-        .anim-hit {{ animation: shake-hit 0.4s ease; filter: drop-shadow(0 0 40px red) brightness(2) !important; }}
-        @keyframes shake-hit {{ 0%, 100% {{ transform: translateX(0); }} 20% {{ transform: translateX(-15px) rotate(-10deg); }} 40% {{ transform: translateX(15px) rotate(10deg); }} 60% {{ transform: translateX(-10px); }} 80% {{ transform: translateX(10px); }} }}
-        
-        /* Attaque Laser */
-        .laser-beam {{ position: absolute; top: 50%; height: 8px; background: #ff00ff; box-shadow: 0 0 20px #ff00ff, 0 0 40px white; z-index: 20; opacity: 0; border-radius: 4px; }}
-        .anim-laser-p1 {{ animation: shoot-right 0.5s ease-out; left: 200px; }}
-        .anim-laser-p2 {{ animation: shoot-left 0.5s ease-out; right: 200px; }}
-        @keyframes shoot-right {{ 0% {{ width: 0; opacity: 1; }} 50% {{ width: 400px; opacity: 1; }} 100% {{ width: 0; transform: translateX(400px); opacity: 0; }} }}
-        @keyframes shoot-left {{ 0% {{ width: 0; opacity: 1; }} 50% {{ width: 400px; opacity: 1; }} 100% {{ width: 0; transform: translateX(-400px); opacity: 0; }} }}
-        
-        /* Effets Ultimes (Tremblement d'écran et Flash) */
-        .anim-screen-shake {{ animation: global-shake 0.8s cubic-bezier(.36,.07,.19,.97) both; }}
-        @keyframes global-shake {{ 10%, 90% {{ transform: translate3d(-5px, 5px, 0); }} 20%, 80% {{ transform: translate3d(10px, -5px, 0); }} 30%, 50%, 70% {{ transform: translate3d(-15px, 10px, 0); }} 40%, 60% {{ transform: translate3d(15px, -10px, 0); }} }}
-        
-        .flashbang {{ position: absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:99; pointer-events:none; }}
-        .anim-flash {{ animation: bang 1.5s ease-out; }}
-        @keyframes bang {{ 0% {{ opacity: 1; }} 100% {{ opacity: 0; }} }}
-        
-        .anim-ko {{ animation: fade-out-ko 2s forwards; }}
-        @keyframes fade-out-ko {{ 0% {{ filter: grayscale(0) brightness(1); opacity:1; }} 100% {{ filter: grayscale(1) brightness(0); opacity:0; transform: translateY(50px); }} }}
-
-    </style>
-    </head>
-    <body>
-
-    <div class="arena-container" id="arena">
-        <div class="grid"></div>
-        <div class="flashbang" id="flash"></div>
-        
-        <div class="hud">
-            <div class="hp-box">
-                <div class="hp-name">Ton Entité</div>
-                <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p1"></div></div>
+        <div class="arena-container" id="arena">
+            <div class="grid"></div>
+            
+            <div class="hud">
+                <div class="hp-box">
+                    <div class="hp-name">{user}</div>
+                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p1"></div></div>
+                </div>
+                <div class="hp-box" style="border-color:#ff00ff; box-shadow: 0 0 10px #ff00ff;">
+                    <div class="hp-name" style="text-align:right;">{adv_nom}</div>
+                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p2" style="background:#ff00ff; box-shadow: 0 0 10px #ff00ff; float:right;"></div></div>
+                </div>
             </div>
-            <div class="hp-box" style="border-color:#ff00ff; box-shadow: 0 0 10px #ff00ff;">
-                <div class="hp-name" style="text-align:right;">Adversaire</div>
-                <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p2" style="background:#ff00ff; box-shadow: 0 0 10px #ff00ff; float:right;"></div></div>
+
+            <div class="stage">
+                <div class="fighter" id="p1">
+                    <img src="{b1_base}" class="base-sprite">
+                    <img src="{b1_p}" class="overlay-sprite" id="p1-pierre">
+                    <img src="{b1_f}" class="overlay-sprite" id="p1-feuille">
+                    <img src="{b1_c}" class="overlay-sprite" id="p1-ciseaux">
+                </div>
+                <div class="fighter" id="p2" style="transform: scaleX(-1);"> <img src="{b2_base}" class="base-sprite">
+                    <img src="{b2_p}" class="overlay-sprite" id="p2-pierre">
+                    <img src="{b2_f}" class="overlay-sprite" id="p2-feuille">
+                    <img src="{b2_c}" class="overlay-sprite" id="p2-ciseaux">
+                </div>
             </div>
+
+            <div class="dialogue-box" id="dialogue">Initialisation système... CLIQUEZ ICI POUR LANCER L'ASSAUT.</div>
         </div>
 
-        <div class="stage">
-            <div class="fighter" id="p1"><img src="{img_p1}" onerror="this.style.display='none'"></div>
-            <div class="fighter" id="p2"><img src="{img_p2}"></div>
-        </div>
-        
-        <div class="laser-beam" id="laser"></div>
+        <script>
+            const scriptJson = {script_json};
+            
+            const dialogue = document.getElementById('dialogue');
+            const p1 = document.getElementById('p1');
+            const p2 = document.getElementById('p2');
+            const hp1 = document.getElementById('hp-p1');
+            const hp2 = document.getElementById('hp-p2');
+            const arena = document.getElementById('arena');
+            
+            let vieP1 = 100;
+            let vieP2 = 100;
+            let started = false;
 
-        <div class="dialogue-box" id="dialogue">Initialisation du combat... Cliquez ici pour démarrer.</div>
-    </div>
-
-    <script>
-        const scriptJson = {script_json};
-        
-        const dialogue = document.getElementById('dialogue');
-        const p1 = document.getElementById('p1');
-        const p2 = document.getElementById('p2');
-        const hp1 = document.getElementById('hp-p1');
-        const hp2 = document.getElementById('hp-p2');
-        const arena = document.getElementById('arena');
-        const flash = document.getElementById('flash');
-        const laser = document.getElementById('laser');
-        
-        let vieP1 = 100;
-        let vieP2 = 100;
-        let started = false;
-
-        function typeWriter(text, i, cb) {{
-            if (i === 0) dialogue.innerHTML = "";
-            if (i < text.length) {{
-                dialogue.innerHTML += text.charAt(i);
-                setTimeout(() => typeWriter(text, i + 1, cb), 25);
-            }} else if (cb) cb();
-        }}
-
-        function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
-
-        async function playTurn(tour) {{
-            return new Promise(resolve => {{
-                // Affichage du texte
-                typeWriter(tour.texte, 0, async () => {{
-                    
-                    const attaquant = tour.attaquant === 1 ? p1 : p2;
-                    const defenseur = tour.attaquant === 1 ? p2 : p1;
-                    const hpBarDef = tour.attaquant === 1 ? hp2 : hp1;
-                    
-                    // 1. ANIMATION DE L'ATTAQUE
-                    if(tour.action === "dash") {{
-                        attaquant.classList.add(tour.attaquant === 1 ? 'anim-dash-p1' : 'anim-dash-p2');
-                        await sleep(300); // Le moment de l'impact
-                    }} 
-                    else if(tour.action === "laser") {{
-                        laser.className = "laser-beam " + (tour.attaquant === 1 ? 'anim-laser-p1' : 'anim-laser-p2');
-                        await sleep(200);
-                    }}
-                    else if(tour.action === "ultime") {{
-                        arena.classList.add('anim-screen-shake');
-                        flash.classList.add('anim-flash');
-                        await sleep(400);
-                    }}
-
-                    // 2. RÉACTION DU DÉFENSEUR (Hit)
-                    defenseur.classList.add('anim-hit');
-                    
-                    // 3. MISE À JOUR DES DEGATS
-                    if(tour.attaquant === 1) {{
-                        vieP2 = Math.max(0, vieP2 - tour.dmg);
-                        hpBarDef.style.width = vieP2 + "%";
-                    }} else {{
-                        vieP1 = Math.max(0, vieP1 - tour.dmg);
-                        hpBarDef.style.width = vieP1 + "%";
-                    }}
-
-                    // 4. NETTOYAGE DES CLASSES
-                    await sleep(600);
-                    attaquant.className = "fighter";
-                    defenseur.className = "fighter";
-                    laser.className = "laser-beam";
-                    arena.className = "arena-container";
-                    flash.className = "flashbang";
-
-                    // 5. VÉRIFICATION DU KO
-                    if(tour.ko) {{
-                        defenseur.classList.add('anim-ko');
-                        await sleep(1500);
-                    }}
-
-                    await sleep(500); // Pause avant le tour suivant
-                    resolve();
-                }});
-            }});
-        }}
-
-        async function startBattle() {{
-            if(started) return;
-            started = true;
-            for(let i=0; i<scriptJson.length; i++) {{
-                await playTurn(scriptJson[i]);
+            function typeWriter(text, i, cb) {{
+                if (i === 0) dialogue.innerHTML = "";
+                if (i < text.length) {{
+                    dialogue.innerHTML += text.charAt(i);
+                    setTimeout(() => typeWriter(text, i + 1, cb), 20);
+                }} else if (cb) cb();
             }}
-            typeWriter("COMBAT TERMINÉ. MISE À JOUR DE LA MATRICE...", 0);
-        }}
 
-        document.getElementById('arena').addEventListener('click', startBattle);
+            function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
 
-    </script>
-    </body>
-    </html>
-    """
-    
-    components.html(html_arena, height=450)
+            async function playTurn(tour) {{
+                return new Promise(resolve => {{
+                    typeWriter(tour.texte, 0, async () => {{
+                        
+                        // 1. APPARITION DES CALQUES D'ATTAQUE (OVERLAYS)
+                        let over1 = document.getElementById('p1-' + tour.p1_move);
+                        let over2 = document.getElementById('p2-' + tour.p2_move);
+                        if(over1) over1.style.opacity = 1;
+                        if(over2) over2.style.opacity = 1;
+                        
+                        // Petite pause "Tension" (On laisse le joueur admirer les auras)
+                        await sleep(600); 
+
+                        // 2. CHOC PHYSIQUE
+                        if(tour.winner === 1) {{
+                            p1.classList.add('anim-dash-p1');
+                            await sleep(300);
+                            p2.classList.add('anim-hit');
+                            arena.classList.add('anim-screen-shake');
+                        }} else if (tour.winner === 2) {{
+                            p2.classList.add('anim-dash-p2');
+                            await sleep(300);
+                            p1.classList.add('anim-hit');
+                            arena.classList.add('anim-screen-shake');
+                        }} else {{
+                            // Égalité (Choc frontal)
+                            p1.classList.add('anim-dash-p1');
+                            p2.classList.add('anim-dash-p2');
+                            await sleep(300);
+                            p1.classList.add('anim-hit');
+                            p2.classList.add('anim-hit');
+                            arena.classList.add('anim-screen-shake');
+                        }}
+
+                        // 3. ACTUALISATION DES HP
+                        vieP1 = Math.max(0, vieP1 - tour.dmg1);
+                        vieP2 = Math.max(0, vieP2 - tour.dmg2);
+                        hp1.style.width = vieP1 + "%";
+                        hp2.style.width = vieP2 + "%";
+
+                        // 4. NETTOYAGE POUR LE PROCHAIN ROUND
+                        await sleep(600);
+                        if(over1) over1.style.opacity = 0;
+                        if(over2) over2.style.opacity = 0;
+                        
+                        p1.className = "fighter";
+                        p2.className = "fighter";
+                        arena.className = "arena-container";
+
+                        await sleep(500);
+                        resolve();
+                    }});
+                }});
+            }}
+
+            async function startBattle() {{
+                if(started) return;
+                started = true;
+                for(let i=0; i<scriptJson.length; i++) {{
+                    dialogue.innerHTML = "=== ROUND " + scriptJson[i].tour + " ===";
+                    await sleep(800);
+                    await playTurn(scriptJson[i]);
+                }}
+                
+                // FIN DU COMBAT
+                if(vieP1 > vieP2) {{
+                    typeWriter("VICTOIRE TOTALE ! L'entité ennemie est anéantie.", 0);
+                    p2.classList.add('anim-ko');
+                }} else if (vieP2 > vieP1) {{
+                    typeWriter("DÉFAITE CRITIQUE... Votre entité succombe.", 0);
+                    p1.classList.add('anim-ko');
+                }} else {{
+                    typeWriter("ÉGALITÉ. Les deux matrices sont à plat.", 0);
+                    p1.classList.add('anim-ko');
+                    p2.classList.add('anim-ko');
+                }}
+            }}
+
+            document.getElementById('arena').addEventListener('click', startBattle);
+        </script>
+        </body>
+        </html>
+        """
+        
+        components.html(html_arena, height=450)
