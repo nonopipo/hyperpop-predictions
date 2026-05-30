@@ -611,12 +611,32 @@ if user in db.get("utilisateurs", {}):
 user = st.session_state.utilisateur_courant
 
 if st.session_state.get("check_recompenses", False):
-    historique_vu = db["utilisateurs"][user].get("historique_vu", [])
+    if "historique_vu" not in db["utilisateurs"][user]: 
+        db["utilisateurs"][user]["historique_vu"] = []
+        
+    historique_vu = db["utilisateurs"][user]["historique_vu"]
     marches_clos_non_vus = [q for q in db["questions"] if q["statut"] == "clos" and q["id"] not in historique_vu]
     
-    if marches_clos_non_vus:
-        q_en_cours = marches_clos_non_vus[0]
-        pari_associe = next((p for p in db["paris"] if p["id_question"] == q_en_cours["id"] and p["joueur"] == user), None)
+    # --- NOUVEAU : LE FILTRE NINJA (Cible uniquement les paris du joueur) ---
+    marches_a_afficher = []
+    modifications_silencieuses = False
+    
+    for q in marches_clos_non_vus:
+        pari = next((p for p in db["paris"] if p["id_question"] == q["id"] and p["joueur"] == user), None)
+        if pari:
+            marches_a_afficher.append((q, pari))
+        else:
+            # Ajout silencieux à l'historique : le joueur ne sera pas spammé
+            db["utilisateurs"][user]["historique_vu"].append(q["id"])
+            modifications_silencieuses = True
+            
+    if modifications_silencieuses:
+        save_data(db) # On sauvegarde instantanément les marchés ignorés
+    # ------------------------------------------------------------------------
+    
+    # S'il reste des marchés sur lesquels le joueur a parié, on lance la machine à dopamine
+    if marches_a_afficher:
+        q_en_cours, pari_associe = marches_a_afficher[0]
         
         st.markdown(f"<h2 style='text-align:center;'>🚨 RÉSULTAT REÇU ! 🚨</h2>", unsafe_allow_html=True)
         
@@ -627,55 +647,54 @@ if st.session_state.get("check_recompenses", False):
             html_recompense += f"<h3 class='zoom-pop-text'>{q_en_cours['titre']}</h3>"
             html_recompense += f"<p class='zoom-pop-text delay-1' style='font-size: 1.2rem;'>La Vérité absolue : <b style='color:#39ff14;'>{q_en_cours['resultat']}</b></p>"
             
-            if pari_associe:
-                classe = db["utilisateurs"][user].get("classe_familier", "Équilibré")
-                base_win = pari_associe["credences"].get(q_en_cours["resultat"], 0)
-                
-                # Calcul exact via le moteur central
-                gain, perte, net_pts = calculer_bilan_pari(base_win, classe)
-                
-                html_recompense += "<div class='zoom-pop-text delay-2'>"
-                html_recompense += f"<p style='color:#ffff00; font-weight:bold;'>Ta crédence : {base_win}%</p>"
-                html_recompense += f"<p style='color:#00ffff; font-size: 0.9rem;'>Alignement Actif : {classe}</p>"
-                
-                masque_restant = 100 - base_win
-                html_recompense += f"<style> @keyframes fluide-{q_en_cours['id']} {{ 0% {{ width: 100%; }} 100% {{ width: {masque_restant}%; }} }} </style>"
-                html_recompense += f"<div class='xp-bar-container'><div class='xp-bar-overlay' style='animation: fluide-{q_en_cours['id']} 4.5s linear forwards;'><div class='sparks-front'></div></div></div>"
-                html_recompense += "</div>"
-                
-                # AFFICHAGE DU NET (Gain ou Perte)
-                if net_pts > 0:
-                    html_recompense += f"<h2 class='zoom-pop-text delay-3'>BILAN NET : +{net_pts} PTS</h2>"
-                else:
-                    html_recompense += f"<h2 class='zoom-pop-text delay-3' style='color:#ff0055;'>BILAN NET : {net_pts} PTS</h2>"
-                
-                # L'ANIMATION EN FONCTION DU RÉSULTAT
-                if net_pts < 0: 
-                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION .</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
-                elif net_pts == 0: 
-                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-fade'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#aaaaaa !important; text-shadow:none;'>Pari Blanc.</h3><p class='zoom-pop-text delay-3'>Tu n'as rien gagné, rien perdu.</p>"
-                elif net_pts <= 40: 
-                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-glow'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#00ffff !important; text-shadow:none;'>Bénéfice Mineur.</h3><p class='zoom-pop-text delay-3'>Ton intuition te rapporte quelques points.</p>"
-                else: 
-                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='third-eye-psy'>👁️⚙️⚡</div></div><h2 class='zoom-pop-text delay-3' style='color:#ffff00 !important; text-shadow: 0 0 20px #ff00ff;'>✨ DOPAMINE MAX !!! ✨</h2><h3 class='zoom-pop-text delay-3' style='color:#39ff14 !important;'>ASCENSION VALIDÉE !</h3>"
-                
-                points_gagnes_animation = net_pts # Pour la variable de session
+            classe = db["utilisateurs"][user].get("classe_familier", "Équilibré")
+            base_win = pari_associe["credences"].get(q_en_cours["resultat"], 0)
+            
+            # Calcul exact via le moteur central
+            gain, perte, net_pts = calculer_bilan_pari(base_win, classe)
+            
+            html_recompense += "<div class='zoom-pop-text delay-2'>"
+            html_recompense += f"<p style='color:#ffff00; font-weight:bold;'>Ta crédence : {base_win}%</p>"
+            html_recompense += f"<p style='color:#00ffff; font-size: 0.9rem;'>Alignement Actif : {classe}</p>"
+            
+            masque_restant = 100 - base_win
+            html_recompense += f"<style> @keyframes fluide-{q_en_cours['id']} {{ 0% {{ width: 100%; }} 100% {{ width: {masque_restant}%; }} }} </style>"
+            html_recompense += f"<div class='xp-bar-container'><div class='xp-bar-overlay' style='animation: fluide-{q_en_cours['id']} 4.5s linear forwards;'><div class='sparks-front'></div></div></div>"
+            html_recompense += "</div>"
+            
+            # AFFICHAGE DU NET (Gain ou Perte)
+            if net_pts > 0:
+                html_recompense += f"<h2 class='zoom-pop-text delay-3'>BILAN NET : +{net_pts} PTS</h2>"
             else:
-                points_gagnes = 0
-                html_recompense += "<div class='zoom-pop-text delay-2'><p>Tu n'avais pas enregistré de vision sur ce marché.</p><h2 style='color:#ff0055;'>GAIN : 0 POINTS</h2></div>"
-                
+                html_recompense += f"<h2 class='zoom-pop-text delay-3' style='color:#ff0055;'>BILAN NET : {net_pts} PTS</h2>"
+            
+            # L'ANIMATION EN FONCTION DU RÉSULTAT
+            if net_pts < 0: 
+                html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION .</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
+            elif net_pts == 0: 
+                html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-fade'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#aaaaaa !important; text-shadow:none;'>Pari Blanc.</h3><p class='zoom-pop-text delay-3'>Tu n'as rien gagné, rien perdu.</p>"
+            elif net_pts <= 40: 
+                html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-glow'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#00ffff !important; text-shadow:none;'>Bénéfice Mineur.</h3><p class='zoom-pop-text delay-3'>Ton intuition te rapporte quelques points.</p>"
+            else: 
+                html_recompense += "<div class='zoom-pop-text delay-3'><div class='third-eye-psy'>👁️⚙️⚡</div></div><h2 class='zoom-pop-text delay-3' style='color:#ffff00 !important; text-shadow: 0 0 20px #ff00ff;'>✨ DOPAMINE MAX !!! ✨</h2><h3 class='zoom-pop-text delay-3' style='color:#39ff14 !important;'>ASCENSION VALIDÉE !</h3>"
+            
+            points_gagnes_animation = net_pts # Stockage pour la récolte finale
+            
             html_recompense += f"</div></{balise_unique}>" 
             
             st.markdown(html_recompense, unsafe_allow_html=True)
             
+            # BOUTON DE COLLECTE
             if st.button("COLLECTER ET CONTINUER 🚀"):
-                if "historique_vu" not in db["utilisateurs"][user]: db["utilisateurs"][user]["historique_vu"] = []
                 db["utilisateurs"][user]["historique_vu"].append(q_en_cours["id"])
                 save_data(db)
-                if points_gagnes > 0: st.session_state.points_volants = points_gagnes
+                if points_gagnes_animation > 0: 
+                    st.session_state.points_volants = points_gagnes_animation
                 rafraichir()
-        st.stop()
+                
+        st.stop() # Bloque l'UI tant que le joueur n'a pas cliqué sur Collecter
     else:
+        # Plus aucun marché pertinent à afficher
         st.session_state.check_recompenses = False
 
 # ==========================================
