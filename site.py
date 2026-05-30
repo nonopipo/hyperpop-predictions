@@ -899,18 +899,19 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     import re
     import json
     import base64
+    import pandas as pd
     
     st.subheader("L'AUTEL DES SOUVERAINS")
 
     # ==========================================
     # 🌟 MINIJEU CACHÉ : SURVIE MATRICIELLE 
     # ==========================================
-    # On place une ancre invisible. Si l'ancre disparait (changement d'onglet), le jeu s'autodétruit.
+    # On place une ancre invisible pour que le jeu s'arrête si on change d'onglet
     st.markdown("<div id='cyber-game-anchor'></div>", unsafe_allow_html=True)
     
     def nettoyer_svg_game(svg_code):
         if not svg_code: return ""
-        svg_code = re.sub(r'<!--.*?-->', '', svg_code, flags=re.DOTALL)
+        svg_code = re.sub(r'', '', svg_code, flags=re.DOTALL)
         svg_code = svg_code.replace("```xml", "").replace("```html", "").replace("```", "")
         svg_code = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
         svg_code = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
@@ -919,7 +920,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         svg_code = re.sub(r'height="[^"]*"', 'height="100%"', svg_code, count=1, flags=re.IGNORECASE)
         return svg_code.replace('\n', ' ').strip()
 
-    # On récupère TOUS les familiers SAUF celui du joueur
+    # On récupère les familiers des AUTRES joueurs
     bots_svgs = []
     for nom_joueur, data_joueur in db.get("utilisateurs", {}).items():
         if nom_joueur != user and data_joueur.get("familier_svg"):
@@ -927,181 +928,162 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     bots_json = json.dumps(bots_svgs)
 
-    # LE MOTEUR DE JEU EN JAVASCRIPT
-    js_game_engine = """
-    // NETTOYAGE DES ANCIENNES SESSIONS
+    # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour éviter les bugs d'éditeur Python)
+    js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
-    if (window.cyberMouseMove) window.removeEventListener('mousemove', window.cyberMouseMove);
-    if (window.cyberKeyDown) window.removeEventListener('keydown', window.cyberKeyDown);
-    const oldOverlay = document.getElementById('cyber-minigame');
+    if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
+    if (window.cyberKeyDown) window.removeEventListener("keydown", window.cyberKeyDown);
+    var oldOverlay = document.getElementById("cyber-minigame");
     if (oldOverlay) oldOverlay.remove();
 
-    // CRÉATION DU CALQUE DE JEU (Invisible pour les clics de souris)
-    const overlay = document.createElement('div');
-    overlay.id = 'cyber-minigame';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9998;overflow:hidden;';
+    var overlay = document.createElement("div");
+    overlay.id = "cyber-minigame";
+    overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9998;overflow:hidden;";
     document.body.appendChild(overlay);
 
-    const botsData = BOTS_JSON_HERE;
-    let lasers = [];
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let dirX = 0, dirY = -1; // Direction par défaut du joueur
-    let playerHp = 100;
+    var botsData = BOTS_JSON_HERE;
+    var lasers = [];
+    var mouseX = window.innerWidth / 2;
+    var mouseY = window.innerHeight / 2;
+    var dirX = 0, dirY = -1; 
+    var playerHp = 100;
 
-    // TRACKING SOURIS DU JOUEUR
-    window.cyberMouseMove = e => {
-        let dx = e.clientX - mouseX;
-        let dy = e.clientY - mouseY;
+    window.cyberMouseMove = function(e) {
+        var dx = e.clientX - mouseX;
+        var dy = e.clientY - mouseY;
         if(Math.hypot(dx, dy) > 2) {
-            let len = Math.hypot(dx, dy);
+            var len = Math.hypot(dx, dy);
             dirX = dx/len; 
             dirY = dy/len;
         }
         mouseX = e.clientX; 
         mouseY = e.clientY;
     };
-    window.addEventListener('mousemove', window.cyberMouseMove);
+    window.addEventListener("mousemove", window.cyberMouseMove);
 
-    // CRÉATION DES ENNEMIS (BOTS)
-    let bots = botsData.map(svg => {
-        let el = document.createElement('div');
-        el.style.cssText = 'position:absolute;width:64px;height:64px;transform:translate(-50%, -50%);transition: filter 0.1s;';
+    var bots = botsData.map(function(svg) {
+        var el = document.createElement("div");
+        el.style.cssText = "position:absolute;width:64px;height:64px;transform:translate(-50%, -50%);transition: filter 0.1s;";
         el.innerHTML = svg;
         
-        let hpBarContainer = document.createElement('div');
-        hpBarContainer.style.cssText = 'position:absolute;top:-12px;left:0;width:100%;height:5px;background:#333;border:1px solid #000;border-radius:3px;overflow:hidden;';
-        let hpBar = document.createElement('div');
-        hpBar.style.cssText = 'width:100%;height:100%;background:#ff0055;transition:width 0.1s;';
+        var hpBarContainer = document.createElement("div");
+        hpBarContainer.style.cssText = "position:absolute;top:-12px;left:0;width:100%;height:5px;background:#333;border:1px solid #000;border-radius:3px;overflow:hidden;";
+        var hpBar = document.createElement("div");
+        hpBar.style.cssText = "width:100%;height:100%;background:#ff0055;transition:width 0.1s;";
         
         hpBarContainer.appendChild(hpBar);
         el.appendChild(hpBarContainer);
         overlay.appendChild(el);
         
         return {
-            x: Math.random() < 0.5 ? -100 : window.innerWidth + 100, // Apparition hors écran
+            x: Math.random() < 0.5 ? -100 : window.innerWidth + 100,
             y: Math.random() * window.innerHeight,
             hp: 100, el: el, hpBar: hpBar, lastShot: Math.random() * 100
         };
     });
 
-    // TIR DU JOUEUR (ESPACE)
-    window.cyberKeyDown = e => {
-        if(e.code === 'Space') {
-            e.preventDefault(); // Bloque le scroll de la page
-            let el = document.createElement('div');
-            el.style.cssText = `position:absolute;left:${mouseX}px;top:${mouseY}px;width:25px;height:6px;background:#39ff14;box-shadow:0 0 15px #39ff14;transform:translate(-50%,-50%) rotate(${Math.atan2(dirY,dirX)}rad);border-radius:3px;`;
+    window.cyberKeyDown = function(e) {
+        if(e.code === "Space") {
+            e.preventDefault();
+            var el = document.createElement("div");
+            el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:25px;height:6px;background:#39ff14;box-shadow:0 0 15px #39ff14;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:3px;";
             overlay.appendChild(el);
             lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
         }
     };
-    window.addEventListener('keydown', window.cyberKeyDown);
+    window.addEventListener("keydown", window.cyberKeyDown);
 
-    // EFFET EXPLOSION
     function createExplosion(x, y, color) {
-        let exp = document.createElement('div');
-        exp.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:80px;height:80px;background:radial-gradient(circle, #fff 0%, ${color} 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);`;
+        var exp = document.createElement("div");
+        exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:80px;height:80px;background:radial-gradient(circle, #fff 0%, " + color + " 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
         overlay.appendChild(exp);
-        let scale = 0, op = 1;
-        let anim = setInterval(() => {
+        var scale = 0, op = 1;
+        var anim = setInterval(function() {
             scale += 0.25; op -= 0.1;
-            exp.style.transform = `translate(-50%,-50%) scale(${scale})`;
+            exp.style.transform = "translate(-50%,-50%) scale(" + scale + ")";
             exp.style.opacity = op;
             if(op <= 0) { clearInterval(anim); exp.remove(); }
         }, 30);
     }
 
-    // LA BOUCLE DE JEU
     function update() {
-        // AUTODESTRUCTION SI ON QUITTE L'ONGLET
-        if(!document.getElementById('cyber-game-anchor')) {
+        if(!document.getElementById("cyber-game-anchor")) {
             overlay.remove();
             return;
         }
 
-        // COMPORTEMENT DES BOTS
-        bots.forEach(b => {
+        bots.forEach(function(b) {
             if(b.hp <= 0) return;
-            let dx = mouseX - b.x;
-            let dy = mouseY - b.y;
-            let dist = Math.hypot(dx, dy);
+            var dx = mouseX - b.x;
+            var dy = mouseY - b.y;
+            var dist = Math.hypot(dx, dy);
             
-            // Poursuite (Mouvement)
             if(dist > 0) {
-                b.x += (dx/dist) * 1.8; // Vitesse des monstres
+                b.x += (dx/dist) * 1.8;
                 b.y += (dy/dist) * 1.8;
             }
-            b.el.style.left = b.x + 'px';
-            b.el.style.top = b.y + 'px';
+            b.el.style.left = b.x + "px";
+            b.el.style.top = b.y + "px";
 
-            // Tir Laser des Bots
             b.lastShot++;
-            if(b.lastShot > 140 && dist < 600) { // Un tir toutes les ~2 secondes si proche
-                let el = document.createElement('div');
-                el.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:20px;height:5px;background:#ff00ff;box-shadow:0 0 15px #ff00ff;transform:translate(-50%,-50%) rotate(${Math.atan2(dy,dx)}rad);border-radius:2px;`;
+            if(b.lastShot > 140 && dist < 600) {
+                var el = document.createElement("div");
+                el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:20px;height:5px;background:#ff00ff;box-shadow:0 0 15px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:2px;";
                 overlay.appendChild(el);
                 lasers.push({x: b.x, y: b.y, vx: dx/dist, vy: dy/dist, isPlayer: false, el: el});
                 b.lastShot = 0;
             }
         });
 
-        // PHYSIQUE DES LASERS
-        for(let i = lasers.length - 1; i >= 0; i--) {
-            let l = lasers[i];
-            l.x += l.vx * 12; // Vitesse des lasers
+        for(var i = lasers.length - 1; i >= 0; i--) {
+            var l = lasers[i];
+            l.x += l.vx * 12;
             l.y += l.vy * 12;
-            l.el.style.left = l.x + 'px';
-            l.el.style.top = l.y + 'px';
+            l.el.style.left = l.x + "px";
+            l.el.style.top = l.y + "px";
 
-            // Destruction hors écran
             if(l.x < -100 || l.x > window.innerWidth + 100 || l.y < -100 || l.y > window.innerHeight + 100) {
                 l.el.remove();
                 lasers.splice(i, 1);
                 continue;
             }
 
-            // Collisions
             if(l.isPlayer) {
-                // Le joueur touche un monstre
-                bots.forEach(b => {
+                bots.forEach(function(b) {
                     if(b.hp > 0 && Math.hypot(b.x - l.x, b.y - l.y) < 35) {
-                        b.hp -= 34; // Faut 3 tirs pour tuer
-                        b.hpBar.style.width = Math.max(0, b.hp) + '%';
-                        b.el.style.filter = 'brightness(3) drop-shadow(0 0 20px #ff0055)';
-                        setTimeout(() => { if(b.el) b.el.style.filter='none'; }, 100);
+                        b.hp -= 34;
+                        b.hpBar.style.width = Math.max(0, b.hp) + "%";
+                        b.el.style.filter = "brightness(3) drop-shadow(0 0 20px #ff0055)";
+                        setTimeout(function() { if(b.el) b.el.style.filter="none"; }, 100);
                         l.el.remove();
                         lasers.splice(i, 1);
 
-                        // Mort du Bot
                         if(b.hp <= 0) {
-                            createExplosion(b.x, b.y, '#ff0055');
-                            b.el.style.display = 'none';
-                            // Respawn (3 sec)
-                            setTimeout(() => {
+                            createExplosion(b.x, b.y, "#ff0055");
+                            b.el.style.display = "none";
+                            setTimeout(function() {
                                 b.x = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
                                 b.y = Math.random() * window.innerHeight;
                                 b.hp = 100;
-                                b.hpBar.style.width = '100%';
-                                b.el.style.display = 'block';
+                                b.hpBar.style.width = "100%";
+                                b.el.style.display = "block";
                             }, 3000);
                         }
                     }
                 });
             } else {
-                // Un monstre touche le joueur
                 if(Math.hypot(mouseX - l.x, mouseY - l.y) < 20) {
-                    playerHp -= 20; // Le joueur meurt en 5 tirs
+                    playerHp -= 20;
                     document.body.style.boxShadow = "inset 0 0 80px rgba(255, 0, 85, 0.8)";
-                    setTimeout(() => document.body.style.boxShadow = "none", 150);
+                    setTimeout(function() { document.body.style.boxShadow = "none"; }, 150);
                     l.el.remove();
                     lasers.splice(i, 1);
                     
-                    // Mort du joueur
                     if(playerHp <= 0) {
-                        playerHp = 100; // Soin instantané
-                        createExplosion(mouseX, mouseY, '#00ffff');
+                        playerHp = 100;
+                        createExplosion(mouseX, mouseY, "#00ffff");
                         document.body.style.filter = "invert(1) hue-rotate(180deg)";
-                        setTimeout(() => document.body.style.filter = "none", 200);
+                        setTimeout(function() { document.body.style.filter = "none"; }, 200);
                     }
                 }
             }
@@ -1109,15 +1091,16 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         window.cyberGameLoop = requestAnimationFrame(update);
     }
     update();
-    """.replace("BOTS_JSON_HERE", bots_json) # Injection sécurisée
+    '''.replace("BOTS_JSON_HERE", bots_json)
 
-    # Encodage Base64 et exécution invisible 
+    # Injection du script (guillemets double/simple inversés de façon ultra sécurisée)
     b64_script = base64.b64encode(js_game_engine.encode('utf-8')).decode('utf-8')
-    st.markdown(f'<img src="x" onerror="eval(atob(\'{b64_script}\'))" style="display:none;">', unsafe_allow_html=True)
+    html_inj = f"<img src='x' onerror='eval(atob(\"{b64_script}\"))' style='display:none;'>"
+    st.markdown(html_inj, unsafe_allow_html=True)
 
 
     # ==========================================
-    # RETOUR AU PANTHÉON CLASSIQUE ORIGINAL (INTOUCHÉ)
+    # RETOUR AU PANTHÉON CLASSIQUE ORIGINAL 
     # ==========================================
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
     
@@ -1160,7 +1143,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
         scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
         
-    import pandas as pd
     df_scores = pd.DataFrame(scores_data)
     
     html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
