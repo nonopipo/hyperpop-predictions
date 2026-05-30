@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG en curseur GÉANT avec une VRAIE petite aura."""
+    """Transforme le SVG en curseur GÉANT, figé et ultra-visible avec une aura."""
     if not svg_code:
         return
 
@@ -31,34 +31,33 @@ def activer_curseur_symbiote(svg_code):
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Destruction des filtres de flou (Pour la netteté)
+    # 2. Sécurisation d'urgence (si l'IA a oublié d'envelopper son code)
+    if not svg_curseur.lower().startswith("<svg"):
+        svg_curseur = f'<svg viewBox="0 0 200 200" width="112" height="112" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
+
+    # 3. LA CONGÉLATION ANTI-FANTÔME 🧊
+    # On détruit TOUTES les balises <animate> générées par l'IA. 
+    # Le familier sera figé dans sa position la plus brillante pour le curseur.
+    svg_curseur = re.sub(r'<animate[^>]*>', '', svg_curseur, flags=re.IGNORECASE)
+
+    # 4. Destruction des filtres de flou et des gros fonds noirs
     svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
-
-    # 3. ÉRADICATION DES GROS CARRÉS DE FOND DE L'IA (On vire juste les backgrounds gênants)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*>.*?</rect>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*/>', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 4. MUTATION TITANESQUE SÉCURISÉE (On ne change QUE la taille de la boîte principale, pas de l'intérieur !)
+    # 5. MUTATION TITANESQUE SÉCURISÉE (On passe à 112x112)
     svg_curseur = re.sub(r'(<svg[^>]*?)width="[^"]*"', r'\g<1>width="112"', svg_curseur, count=1, flags=re.IGNORECASE)
     svg_curseur = re.sub(r'(<svg[^>]*?)height="[^"]*"', r'\g<1>height="112"', svg_curseur, count=1, flags=re.IGNORECASE)
 
-    # 5. Affinage Mathématique des traits du familier
-    def affiner_trait(match):
-        try:
-            epaisseur = float(match.group(1))
-            return f'stroke-width="{max(0.3, epaisseur / 3)}"'
-        except:
-            return match.group(0)
-            
-    svg_curseur = re.sub(r'stroke-width="([0-9.]+)"', affiner_trait, svg_curseur)
+    # Note : J'ai supprimé la division "stroke-width/3". Tes traits vont retrouver toute leur épaisseur d'origine !
 
-    # 6. INJECTION DE L'AURA (Les vraies petites particules, insérées en dernier !)
+    # 6. INJECTION DE L'AURA (Particules solides, sans clignotement pour ne pas faire buguer l'OS)
     particules_aura = """
-    <rect x="20" y="20" width="8" height="8" fill="#39ff14"><animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/></rect>
-    <rect x="170" y="40" width="6" height="6" fill="#00ffff"><animate attributeName="opacity" values="1;0;1" dur="1.5s" repeatCount="indefinite"/></rect>
-    <rect x="30" y="160" width="10" height="10" fill="#ff00ff"><animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/></rect>
-    <rect x="160" y="160" width="7" height="7" fill="#ffff00"><animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/></rect>
+    <rect x="25" y="25" width="8" height="8" fill="#39ff14" opacity="0.9" />
+    <rect x="165" y="35" width="6" height="6" fill="#00ffff" opacity="0.9" />
+    <rect x="35" y="165" width="10" height="10" fill="#ff00ff" opacity="0.9" />
+    <rect x="160" y="160" width="7" height="7" fill="#ffff00" opacity="0.9" />
     </svg>
     """
     svg_curseur = re.sub(r'</svg>', particules_aura, svg_curseur, flags=re.IGNORECASE)
