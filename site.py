@@ -898,10 +898,12 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 elif st.session_state.page_actuelle == "🏆 Classement":
     import re
     import json
-    import base64
+    import streamlit.components.v1 as components
     import pandas as pd
     
     st.subheader("L'AUTEL DES SOUVERAINS")
+
+    st.markdown("<p style='color:#ff0055; font-weight:bold; font-size:1.2rem; text-align:center;'>🚨 INTRUSION DÉTECTÉE : Cliquez n'importe où sur l'écran pour activer les commandes, bougez la souris et appuyez sur [ESPACE] pour tirer ! 🚨</p>", unsafe_allow_html=True)
 
     # ==========================================
     # 🌟 MINIJEU CACHÉ : SURVIE MATRICIELLE 
@@ -926,9 +928,14 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         if nom_joueur != user and data_joueur.get("familier_svg"):
             bots_svgs.append(nettoyer_svg_game(data_joueur["familier_svg"]))
 
+    # FIX 1 : SI LE JOUEUR EST SEUL, ON CRÉE DES DRONES D'ENTRAÎNEMENT ROUGES
+    if len(bots_svgs) == 0:
+        drone_rouge = "<svg viewBox='0 0 200 200' width='100%' height='100%' xmlns='[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)'><circle cx='100' cy='100' r='50' fill='#090014' stroke='#ff0055' stroke-width='6'/><circle cx='100' cy='100' r='15' fill='#00ffff'><animate attributeName='r' values='15;5;15' dur='1s' repeatCount='indefinite'/></circle><path d='M100 10 L100 40 M100 160 L100 190 M10 100 L40 100 M160 100 L190 100' stroke='#ff0055' stroke-width='6'><animateTransform attributeName='transform' type='rotate' values='0 100 100; 360 100 100' dur='4s' repeatCount='indefinite'/></path></svg>"
+        bots_svgs = [drone_rouge, drone_rouge, drone_rouge, drone_rouge] # 4 drones agressifs
+
     bots_json = json.dumps(bots_svgs)
 
-    # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour éviter les bugs d'éditeur Python)
+    # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour Python)
     js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
     if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
@@ -963,13 +970,13 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     var bots = botsData.map(function(svg) {
         var el = document.createElement("div");
-        el.style.cssText = "position:absolute;width:64px;height:64px;transform:translate(-50%, -50%);transition: filter 0.1s;";
+        el.style.cssText = "position:absolute;width:70px;height:70px;transform:translate(-50%, -50%);transition: filter 0.1s;";
         el.innerHTML = svg;
         
         var hpBarContainer = document.createElement("div");
-        hpBarContainer.style.cssText = "position:absolute;top:-12px;left:0;width:100%;height:5px;background:#333;border:1px solid #000;border-radius:3px;overflow:hidden;";
+        hpBarContainer.style.cssText = "position:absolute;top:-15px;left:0;width:100%;height:6px;background:#111;border:1px solid #000;border-radius:3px;overflow:hidden;";
         var hpBar = document.createElement("div");
-        hpBar.style.cssText = "width:100%;height:100%;background:#ff0055;transition:width 0.1s;";
+        hpBar.style.cssText = "width:100%;height:100%;background:#ff0055;transition:width 0.1s;box-shadow:0 0 10px #ff0055;";
         
         hpBarContainer.appendChild(hpBar);
         el.appendChild(hpBarContainer);
@@ -986,7 +993,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         if(e.code === "Space") {
             e.preventDefault();
             var el = document.createElement("div");
-            el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:25px;height:6px;background:#39ff14;box-shadow:0 0 15px #39ff14;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:3px;";
+            el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:30px;height:8px;background:#39ff14;box-shadow:0 0 20px #39ff14, 0 0 40px #ffff00;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:4px;";
             overlay.appendChild(el);
             lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
         }
@@ -995,7 +1002,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     function createExplosion(x, y, color) {
         var exp = document.createElement("div");
-        exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:80px;height:80px;background:radial-gradient(circle, #fff 0%, " + color + " 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
+        exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:120px;height:120px;background:radial-gradient(circle, #fff 0%, " + color + " 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
         overlay.appendChild(exp);
         var scale = 0, op = 1;
         var anim = setInterval(function() {
@@ -1019,16 +1026,16 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             var dist = Math.hypot(dx, dy);
             
             if(dist > 0) {
-                b.x += (dx/dist) * 1.8;
-                b.y += (dy/dist) * 1.8;
+                b.x += (dx/dist) * 2.5; 
+                b.y += (dy/dist) * 2.5;
             }
             b.el.style.left = b.x + "px";
             b.el.style.top = b.y + "px";
 
             b.lastShot++;
-            if(b.lastShot > 140 && dist < 600) {
+            if(b.lastShot > 80 && dist < 700) { 
                 var el = document.createElement("div");
-                el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:20px;height:5px;background:#ff00ff;box-shadow:0 0 15px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:2px;";
+                el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:25px;height:6px;background:#ff00ff;box-shadow:0 0 20px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:3px;";
                 overlay.appendChild(el);
                 lasers.push({x: b.x, y: b.y, vx: dx/dist, vy: dy/dist, isPlayer: false, el: el});
                 b.lastShot = 0;
@@ -1037,8 +1044,8 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
         for(var i = lasers.length - 1; i >= 0; i--) {
             var l = lasers[i];
-            l.x += l.vx * 12;
-            l.y += l.vy * 12;
+            l.x += l.vx * 16; 
+            l.y += l.vy * 16;
             l.el.style.left = l.x + "px";
             l.el.style.top = l.y + "px";
 
@@ -1050,10 +1057,10 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
             if(l.isPlayer) {
                 bots.forEach(function(b) {
-                    if(b.hp > 0 && Math.hypot(b.x - l.x, b.y - l.y) < 35) {
+                    if(b.hp > 0 && Math.hypot(b.x - l.x, b.y - l.y) < 45) {
                         b.hp -= 34;
                         b.hpBar.style.width = Math.max(0, b.hp) + "%";
-                        b.el.style.filter = "brightness(3) drop-shadow(0 0 20px #ff0055)";
+                        b.el.style.filter = "brightness(3) drop-shadow(0 0 30px #ff0055)";
                         setTimeout(function() { if(b.el) b.el.style.filter="none"; }, 100);
                         l.el.remove();
                         lasers.splice(i, 1);
@@ -1067,14 +1074,14 @@ elif st.session_state.page_actuelle == "🏆 Classement":
                                 b.hp = 100;
                                 b.hpBar.style.width = "100%";
                                 b.el.style.display = "block";
-                            }, 3000);
+                            }, 2000);
                         }
                     }
                 });
             } else {
-                if(Math.hypot(mouseX - l.x, mouseY - l.y) < 20) {
+                if(Math.hypot(mouseX - l.x, mouseY - l.y) < 25) {
                     playerHp -= 20;
-                    document.body.style.boxShadow = "inset 0 0 80px rgba(255, 0, 85, 0.8)";
+                    document.body.style.boxShadow = "inset 0 0 100px rgba(255, 0, 85, 0.9)";
                     setTimeout(function() { document.body.style.boxShadow = "none"; }, 150);
                     l.el.remove();
                     lasers.splice(i, 1);
@@ -1093,11 +1100,26 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     update();
     '''.replace("BOTS_JSON_HERE", bots_json)
 
-    # Injection du script (guillemets double/simple inversés de façon ultra sécurisée)
-    b64_script = base64.b64encode(js_game_engine.encode('utf-8')).decode('utf-8')
-    html_inj = f"<img src='x' onerror='eval(atob(\"{b64_script}\"))' style='display:none;'>"
-    st.markdown(html_inj, unsafe_allow_html=True)
-
+    # FIX 2 : INJECTION BLINDÉE VIA STREAMLIT COMPONENTS
+    # Cette méthode écrit un script directement dans la fenêtre principale et contourne la censure
+    js_safe = json.dumps(js_game_engine)
+    components.html(f"""
+        <script>
+            try {{
+                var parentWindow = window.parent;
+                var oldScript = parentWindow.document.getElementById('matrice-game-script');
+                if(oldScript) oldScript.remove();
+                
+                var script = parentWindow.document.createElement('script');
+                script.id = 'matrice-game-script';
+                script.type = 'text/javascript';
+                script.innerHTML = {js_safe};
+                parentWindow.document.body.appendChild(script);
+            }} catch(e) {{
+                console.error("Erreur de la Matrice :", e);
+            }}
+        </script>
+    """, height=0, width=0)
 
     # ==========================================
     # RETOUR AU PANTHÉON CLASSIQUE ORIGINAL 
