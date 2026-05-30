@@ -941,11 +941,25 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     
     col_visu, col_console = st.columns([1, 2])
     
-    with col_visu:
+with col_visu:
         st.markdown("### Entité Actuelle")
         if familier_svg:
-            # On affiche le familier stocké dans la DB !
-            st.markdown(familier_svg, unsafe_allow_html=True)
+            # 1. Nettoyage d'urgence des impuretés (Markdown, sauts de lignes toxiques)
+            svg_propre = familier_svg.replace("```xml", "").replace("```html", "").replace("```", "").strip()
+            
+            # 2. Restauration de l'enveloppe si l'IA l'a oubliée
+            if not svg_propre.lower().startswith("<svg"):
+                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">{svg_propre}</svg>'
+            
+            # 3. La Cage de Confinement (Force le rendu visuel 2D)
+            html_cage = f"""
+            <div style="display: flex; justify-content: center; align-items: center; width: 100%; padding: 20px;">
+                <div style="background: radial-gradient(circle, #1a0033 0%, #050010 80%); border: 2px solid #39ff14; box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); border-radius: 15px; padding: 10px;">
+                    {svg_propre}
+                </div>
+            </div>
+            """
+            st.markdown(html_cage, unsafe_allow_html=True)
         else:
             st.info("Aucune entité détectée. L'incubation est requise.")
             
