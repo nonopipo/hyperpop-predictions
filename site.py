@@ -17,6 +17,45 @@ import re # Pour nettoyer le texte renvoyé par l'IA
 # ==========================================
 st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered", initial_sidebar_state="expanded")
 
+
+def activer_curseur_symbiote(svg_code):
+    """Transforme le SVG du joueur en curseur de souris miniaturisé."""
+    if not svg_code:
+        return
+
+    # 1. Nettoyage absolu (on retire les commentaires qui font planter le CSS)
+    svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
+    svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
+
+    # 2. Miniaturisation (On force la taille à 32x32 pixels, la viewBox se chargera du zoom automatique)
+    # On remplace n'importe quel width="X" par width="32"
+    svg_curseur = re.sub(r'width="\d+"', 'width="32"', svg_curseur)
+    svg_curseur = re.sub(r'height="\d+"', 'height="32"', svg_curseur)
+
+    # 3. Encodage en Base64 (Pour le rendre digeste par le navigateur)
+    try:
+        b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
+        
+        # 4. Injection CSS Globale
+        # Le '16 16' définit le "point de clic" exactement au centre du curseur (16px, 16px)
+        css_curseur = f"""
+        <style>
+            /* Écrase le curseur sur toute l'application */
+            html, body, [class*="st-"] {{
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 16 16, auto !important;
+            }}
+            
+            /* Force aussi le familier sur les boutons et liens (pour ne pas repasser à la "main" classique) */
+            button, a, input, [role="button"] {{
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 16 16, pointer !important;
+            }}
+        </style>
+        """
+        st.markdown(css_curseur, unsafe_allow_html=True)
+    except Exception as e:
+        # En cas d'erreur de conversion, on ne fait rien pour ne pas bloquer l'app
+        pass
+
 def injecter_design():
     st.markdown("""
     <style>
@@ -480,6 +519,21 @@ if st.session_state.utilisateur_courant is None:
             else:
                 st.error("Identifiants incorrects.")
     st.stop()
+
+# ==========================================
+# VIRUS SYMBIOTIQUE : ACTIVATION DU CURSEUR
+# ==========================================
+# On récupère le nom de l'utilisateur connecté grâce à ta variable de session
+user = st.session_state.utilisateur_courant
+
+# On vérifie si l'utilisateur est bien dans la base de données
+if user in db.get("utilisateurs", {}):
+    # On cherche son familier
+    familier_du_joueur = db["utilisateurs"][user].get("familier_svg", None)
+    
+    # S'il en a un, on lance la mutation du curseur !
+    if familier_du_joueur:
+        activer_curseur_symbiote(familier_du_joueur)
 
 # ==========================================
 # 3. LE SYSTÈME À DOPAMINE DE RECONNEXION
