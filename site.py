@@ -12,7 +12,6 @@ import numpy as np
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import re # Pour nettoyer le texte renvoyé par l'IA
-import random
 
 # ==========================================
 # 0. CONFIGURATION & THÈME CSS (HYPERPOP + MATRIX)
