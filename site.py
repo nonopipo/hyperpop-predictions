@@ -1404,6 +1404,7 @@ elif st.session_state.page_actuelle == "👾 Profil":
             st.warning("⚠️ Aucun Symbiote détecté dans vos registres. Rendez-vous à la Clinique Cybernétique pour commencer une incubation.")
 
 elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
+    import random
     st.subheader("LABORATOIRE D'ÉVOLUTION SYMBIOTIQUE")
     
     # On récupère les infos du joueur connecté
@@ -1416,7 +1417,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     familier_svg = u_data.get("familier_svg", None)
     forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
     
-    st.write(f"**🧬 Brins d'ADN disponibles :** {round(brins_actuels, 1)}")
+    st.markdown(f"<h3 style='color:#ffff00; text-shadow: 0 0 10px #ff00ff;'>🧬 Brins d'ADN disponibles : {round(brins_actuels, 1)}</h3>", unsafe_allow_html=True)
     
     # --- RADAR DE DIAGNOSTIC ---
     if st.button("📡 Scan des modèles API disponibles"):
@@ -1472,7 +1473,6 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
             elif len(nouvelle_requete) < 5:
                 st.warning("Soyez plus précis dans votre demande de mutation.")
             else:
-                # --- Récupération du dernier thème ---
                 paris_du_joueur = [p for p in db.get("paris", []) if p["joueur"] == user]
                 if paris_du_joueur:
                     id_dernier_pari = paris_du_joueur[-1]["id_question"]
@@ -1481,9 +1481,6 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                 else:
                     theme_a_envoyer = "Cyberpunk"
                 
-                # ==========================================
-                # 1. ÉCRAN DE CHARGEMENT HACKER (PIMPÉ)
-                # ==========================================
                 placeholder_chargement = st.empty()
                 html_loader = """
                 <style>
@@ -1495,30 +1492,14 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     .cyber-bar-fill { height: 100%; background: #ff00ff; width: 0%; animation: fill-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate; box-shadow: 0 0 15px #ff00ff; }
                     @keyframes fill-bar { 0% { width: 0%; } 100% { width: 100%; } }
                 </style>
-                <div class='cyber-loader-container'>
-                    <div class='cyber-dna'>🧬</div>
-                    <div class='cyber-text-glitch'>SYNTHÈSE GÉNÉTIQUE EN COURS...<br>CONTACT AVEC L'ARCHITECTE (API)</div>
-                    <div class='cyber-bar'><div class='cyber-bar-fill'></div></div>
-                </div>
+                <div class='cyber-loader-container'><div class='cyber-dna'>🧬</div><div class='cyber-text-glitch'>SYNTHÈSE GÉNÉTIQUE EN COURS...<br>CONTACT AVEC L'ARCHITECTE (API)</div><div class='cyber-bar'><div class='cyber-bar-fill'></div></div></div>
                 """
                 placeholder_chargement.markdown(html_loader, unsafe_allow_html=True)
                 
-                # Appel Gemini
-                nouveau_svg = muter_entite_avec_gemini(
-                    forme_actuelle=forme_historique,
-                    requete=nouvelle_requete,
-                    niveau=points_actuels, 
-                    style=style_joueur,
-                    dernier_theme=theme_a_envoyer
-                )
-                
-                # On détruit l'écran de chargement
+                nouveau_svg = muter_entite_avec_gemini(forme_actuelle=forme_historique, requete=nouvelle_requete, niveau=points_actuels, style=style_joueur, dernier_theme=theme_a_envoyer)
                 placeholder_chargement.empty()
                 
                 if nouveau_svg.startswith("<svg"):
-                    # ==========================================
-                    # 2. L'ANIMATION D'ÉVOLUTION POKÉMON (ÉPIQUE)
-                    # ==========================================
                     import re
                     def clean_evo(svg):
                         if not svg: return "<div style='font-size:150px; text-align:center;'>🦠</div>"
@@ -1535,76 +1516,134 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     
                     html_evolution = f"""
                     <style>
-                        /* Fond d'écran total qui bloque tout */
                         .evo-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #150030 0%, #000000 100%); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }}
                         .evo-stage {{ position: relative; width: 450px; height: 450px; display: flex; justify-content: center; align-items: center; }}
                         .evo-sprite {{ position: absolute; width: 100%; height: 100%; }}
-                        
-                        /* Le système de clignotement alterné */
                         .sprite-old {{ animation: poke-evo-old 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
                         .sprite-new {{ opacity: 0; animation: poke-evo-new 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                        
-                        /* L'explosion d'énergie */
                         .evo-flashbang {{ position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; animation: bang 5.5s ease-out forwards; box-shadow: 0 0 200px 100px white; }}
                         .evo-text {{ color: white; font-family: 'Arial Black', sans-serif; font-size: 2.5rem; margin-top: 50px; text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff; animation: pulse-text 0.5s infinite alternate; }}
-                        
-                        /* KEYFRAMES DU CHAOS (L'accélération) */
-                        @keyframes poke-evo-old {{
-                            0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }}
-                            10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }}
-                            25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }}
-                            40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }}
-                            52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }}
-                            62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }}
-                            100% {{ opacity: 0; }}
-                        }}
-                        @keyframes poke-evo-new {{
-                            0% {{ opacity: 0; }}
-                            15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }}
-                            30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }}
-                            45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }}
-                            55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }}
-                            65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }}
-                            70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }}
-                            85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }}
-                            100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }}
-                        }}
+                        @keyframes poke-evo-old {{ 0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }} 10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }} 25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }} 40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }} 52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }} 62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }} 100% {{ opacity: 0; }} }}
+                        @keyframes poke-evo-new {{ 0% {{ opacity: 0; }} 15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }} 30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }} 45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }} 55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }} 65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }} 70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }} 85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} 100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} }}
                         @keyframes bang {{ 0%, 65% {{ opacity: 0; transform: scale(0); }} 70% {{ opacity: 1; transform: scale(50); }} 85%, 100% {{ opacity: 0; transform: scale(100); }} }}
                         @keyframes pulse-text {{ 0% {{ opacity: 0.5; transform: scale(0.95); }} 100% {{ opacity: 1; transform: scale(1.05); }} }}
                     </style>
-                    
-                    <div class="evo-screen">
-                        <div class="evo-stage">
-                            <div class="evo-sprite sprite-old">{svg_old_clean}</div>
-                            <div class="evo-sprite sprite-new">{svg_new_clean}</div>
-                            <div class="evo-flashbang"></div>
-                        </div>
-                        <div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !</div>
-                    </div>
+                    <div class="evo-screen"><div class="evo-stage"><div class="evo-sprite sprite-old">{svg_old_clean}</div><div class="evo-sprite sprite-new">{svg_new_clean}</div><div class="evo-flashbang"></div></div><div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !</div></div>
                     """
                     
-                    # On affiche l'animation plein écran
                     placeholder_evo = st.empty()
                     placeholder_evo.markdown(html_evolution, unsafe_allow_html=True)
                     jouer_son_invisible("validation.mp3") 
-                    
-                    # On fige le script Python pendant 6 secondes (Le temps que le CSS fasse son show explosif)
                     import time
                     time.sleep(6)
-                    
-                    # On efface l'écran d'évolution
                     placeholder_evo.empty()
                     
-                    # 3. Mise à jour de la BDD et rafraîchissement
                     db["utilisateurs"][user]["brins_adn"] -= 50
                     db["utilisateurs"][user]["familier_svg"] = nouveau_svg
                     db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
                     db["utilisateurs"][user]["classe_familier"] = style_joueur
                     save_data(db)
-                    
                     st.balloons()
                     st.rerun()
-                    
                 else:
                     st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
                     st.code(nouveau_svg)
+
+    # ==========================================
+    # 🎰 LA LOTERIE MUTAGÈNE (GACHA)
+    # ==========================================
+    st.markdown("""<hr style="border-color: #ff00ff; border-width: 3px; border-style: dashed; margin: 40px 0;">""", unsafe_allow_html=True)
+    st.subheader("🎰 LA LOTERIE MATRICIELLE")
+    
+    col_gacha_info, col_gacha_btn = st.columns([1, 1])
+    
+    with col_gacha_info:
+        st.markdown("""
+        <div style="background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 15px; border-radius: 10px;">
+            <h4 style="color: #ff00ff; margin-top: 0;">Probabilités d'Extraction :</h4>
+            <ul style="list-style-type: none; padding-left: 0;">
+                <li>🔵 <b>60%</b> : Échec de synthèse (Rien)</li>
+                <li>🟣 <b>20%</b> : Épique (+10 Points)</li>
+                <li>🟡 <b>15%</b> : Jackpot ADN (+50 Brins)</li>
+                <li>🔴 <b>5%</b> : Relique Mythique (Badge 🎰)</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_gacha_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("TIRER LE LEVIER (5 ADN) ☄️", key="btn_gacha", use_container_width=True):
+            if brins_actuels < 5:
+                st.error("Fonds ADN insuffisants.")
+            else:
+                # 1. TIRAGE AU SORT DU GACHA
+                import random
+                tirage = random.random()
+                if tirage < 0.60:
+                    couleur = "#00f0ff" # Cyan / Bleu
+                    msg = "ÉCHEC DE SYNTHÈSE"
+                    sub_msg = "L'ADN s'est désintégré..."
+                    gain_type = "rien"
+                elif tirage < 0.80:
+                    couleur = "#ff00ff" # Violet
+                    msg = "ÉCLAT ÉPIQUE !"
+                    sub_msg = "+10 POINTS DE SCORE"
+                    gain_type = "score"
+                elif tirage < 0.95:
+                    couleur = "#ffff00" # Or
+                    msg = "JACKPOT GÉNÉTIQUE !!!"
+                    sub_msg = "+50 BRINS D'ADN"
+                    gain_type = "adn"
+                else:
+                    couleur = "#ff0055" # Rouge
+                    msg = "RELIQUE MYTHIQUE !!!"
+                    sub_msg = "BADGE 🎰 DÉBLOQUÉ !"
+                    gain_type = "badge"
+
+                # 2. L'ANIMATION GENSHIN (CSS APLATIT POUR ÉVITER LES BUGS)
+                placeholder_gacha = st.empty()
+                
+                # CSS aplatit et blindé pour la cinématique
+                html_gacha = f"""
+                <style>
+                    .gacha-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,0,16,0.98); z-index: 999999; display: flex; justify-content: center; align-items: center; overflow: hidden; }}
+                    .gacha-star {{ position: absolute; top: -20%; left: -20%; width: 6px; height: 120px; background: white; box-shadow: 0 0 30px white, 0 0 60px white; transform: rotate(45deg); animation: shooting-star 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
+                    .gacha-star::after {{ content:''; position:absolute; top:100%; left:-15px; width:36px; height:500px; background: linear-gradient(to bottom, white, transparent); clip-path: polygon(50% 0%, 100% 10%, 50% 100%, 0% 10%); }}
+                    @keyframes shooting-star {{
+                        0% {{ top: -20%; left: -20%; transform: rotate(45deg) scale(1); filter: drop-shadow(0 0 20px white); }}
+                        50% {{ top: 40%; left: 40%; transform: rotate(45deg) scale(1.5); filter: drop-shadow(0 0 80px {couleur}); background: {couleur}; }}
+                        60% {{ top: 50%; left: 50%; transform: rotate(45deg) scale(0); opacity: 0; }}
+                        100% {{ top: 50%; left: 50%; transform: rotate(45deg) scale(0); opacity: 0; }}
+                    }}
+                    .gacha-flash {{ position: absolute; width: 10px; height: 10px; background: {couleur}; border-radius: 50%; opacity: 0; animation: gacha-bang 3s ease-out 1.1s forwards; box-shadow: 0 0 200px 100px {couleur}; }}
+                    @keyframes gacha-bang {{ 0% {{ opacity:0; transform:scale(0); }} 10% {{ opacity:1; transform:scale(80); background: white; }} 30% {{ opacity:0.8; background: {couleur}; transform:scale(150); }} 100% {{ opacity:0; transform:scale(200); }} }}
+                    .gacha-result {{ opacity: 0; color: white; font-family: 'Arial Black', sans-serif; font-size: 5rem; text-align: center; text-transform: uppercase; animation: show-result 2s cubic-bezier(0.1, 0.9, 0.2, 1) 1.2s forwards; text-shadow: 0 0 30px {couleur}, 0 0 60px {couleur}; z-index: 10; }}
+                    @keyframes show-result {{ 0% {{ opacity:0; transform: scale(0.5); }} 20% {{ opacity:1; transform: scale(1.1); }} 100% {{ opacity:1; transform: scale(1); }} }}
+                    .gacha-strobe {{ position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; animation: strobe 0.2s 4 1.0s; z-index: 5; }}
+                    @keyframes strobe {{ 0%, 100% {{ opacity: 0; }} 50% {{ opacity: 0.6; }} }}
+                </style>
+                <div class="gacha-screen"><div class="gacha-strobe"></div><div class="gacha-star"></div><div class="gacha-flash"></div><div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div></div>
+                """
+                
+                # Lancement du son et de l'overlay
+                jouer_son_invisible("validation.mp3")
+                placeholder_gacha.markdown(html_gacha, unsafe_allow_html=True)
+                
+                # 3. PAUSE PYTHON PENDANT LA CINÉMATIQUE (4.5 secondes)
+                import time
+                time.sleep(4.5)
+                placeholder_gacha.empty()
+                
+                # 4. DISTRIBUTION DES GAINS ET SAUVEGARDE
+                db["utilisateurs"][user]["brins_adn"] -= 5 # On fait payer le ticket
+                
+                if gain_type == "score":
+                    db["utilisateurs"][user]["score"] += 10
+                elif gain_type == "adn":
+                    db["utilisateurs"][user]["brins_adn"] += 50
+                elif gain_type == "badge":
+                    if "🎰" not in db["utilisateurs"][user]["badges"]:
+                        db["utilisateurs"][user]["badges"].append("🎰")
+                        
+                save_data(db)
+                st.rerun()
