@@ -344,7 +344,7 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
     # 2. On utilise le modèle le plus rapide et gratuit
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
     # 3. Le Prompt Absolu (celui qu'on a perfectionné ensemble)
     prompt = f"""
@@ -927,6 +927,17 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
     
     st.write(f"**Crédits disponibles :** {round(points_actuels, 1)} PTS")
+    # --- RADAR DE DIAGNOSTIC ---
+    if st.button("📡 Scan des modèles API disponibles"):
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) # ou st.secrets["bdd"]["GEMINI_API_KEY"] selon ce que tu as choisi
+        st.write("Modèles détectés sur cette clé :")
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    st.code(m.name)
+        except Exception as e:
+            st.error(f"Erreur de connexion : {e}")
+    # --------------------------
     
     col_visu, col_console = st.columns([1, 2])
     
