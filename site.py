@@ -936,7 +936,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     bots_json = json.dumps(bots_svgs)
 
     # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour Python)
-js_game_engine = '''
+    js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
     if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
     if (window.cyberKeyDown) window.removeEventListener("keydown", window.cyberKeyDown); // Nettoie l'ancien script
