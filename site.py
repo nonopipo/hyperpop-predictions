@@ -1231,49 +1231,144 @@ elif st.session_state.page_actuelle == "📖 Règles":
     st.markdown(html_regles, unsafe_allow_html=True)
 
 elif st.session_state.page_actuelle == "👾 Profil":
-    st.subheader("CRÉATEUR D'AVATAR")
-    st.markdown("<p style='color:#00ffff;'>Dessine ton identité visuelle dans la matrice. Utilise les couleurs néons.</p>", unsafe_allow_html=True)
+    import re
     
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        stroke_color = st.color_picker("Couleur du pinceau :", "#39ff14")
-        stroke_width = st.slider("Taille du pinceau :", 5, 25, 10, key="slider_pinceau")
-        
-        st.markdown("<br><p style='color:#ff00ff; font-weight:bold;'>Options :</p>", unsafe_allow_html=True)
-        drawing_mode = st.radio("Outil :", ("freedraw", "line", "rect", "circle", "transform"), key="radio_outil")
+    st.subheader("DOSSIER CLASSIFIÉ : IDENTITÉ")
     
-    with col2:
-        # Le Canvas avec un fond sombre cohérent avec le CSS
-        canvas_result = st_canvas(
-            fill_color="rgba(0, 0, 0, 0)", 
-            stroke_width=stroke_width,
-            stroke_color=stroke_color,
-            background_color="#050010",
-            width=256,
-            height=256,
-            drawing_mode=drawing_mode,
-            key="canvas_matrice"
-        )
+    # Création de deux sous-onglets stylés
+    tab_avatar, tab_symbiote = st.tabs(["👾 Créateur d'Avatar", "🧬 Chambre de Confinement (Symbiote)"])
+    
+    with tab_avatar:
+        st.markdown("<p style='color:#00ffff; margin-top:10px;'>Dessine ton identité visuelle dans la matrice. Utilise les couleurs néons.</p>", unsafe_allow_html=True)
         
-        if st.button("Sauvegarder l'Avatar 💾", key="btn_save_avatar"):
-            if canvas_result.image_data is not None:
-                # Récupération de l'image (numpy array)
-                img_array = canvas_result.image_data.astype('uint8')
-                img = Image.fromarray(img_array, 'RGBA')
-                
-                # Réduction en 32x32 pour un vrai look "Pixel Art"
-                img = img.resize((32, 32), Image.Resampling.NEAREST)
-                
-                # Conversion en Base64
-                buffered = io.BytesIO()
-                img.save(buffered, format="PNG")
-                img_str = base64.b64encode(buffered.getvalue()).decode()
-                
-                # Sauvegarde BDD
-                db["utilisateurs"][user]["avatar"] = img_str
-                save_data(db)
-                
-                trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            stroke_color = st.color_picker("Couleur du pinceau :", "#39ff14")
+            stroke_width = st.slider("Taille du pinceau :", 5, 25, 10, key="slider_pinceau")
+            
+            st.markdown("<br><p style='color:#ff00ff; font-weight:bold;'>Options :</p>", unsafe_allow_html=True)
+            drawing_mode = st.radio("Outil :", ("freedraw", "line", "rect", "circle", "transform"), key="radio_outil")
+        
+        with col2:
+            # Le Canvas avec un fond sombre cohérent avec le CSS
+            canvas_result = st_canvas(
+                fill_color="rgba(0, 0, 0, 0)", 
+                stroke_width=stroke_width,
+                stroke_color=stroke_color,
+                background_color="#050010",
+                width=256,
+                height=256,
+                drawing_mode=drawing_mode,
+                key="canvas_matrice"
+            )
+            
+            if st.button("Sauvegarder l'Avatar 💾", key="btn_save_avatar"):
+                if canvas_result.image_data is not None:
+                    # Récupération de l'image (numpy array)
+                    img_array = canvas_result.image_data.astype('uint8')
+                    img = Image.fromarray(img_array, 'RGBA')
+                    
+                    # Réduction en 32x32 pour un vrai look "Pixel Art"
+                    img = img.resize((32, 32), Image.Resampling.NEAREST)
+                    
+                    # Conversion en Base64
+                    buffered = io.BytesIO()
+                    img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+                    
+                    # Sauvegarde BDD
+                    db["utilisateurs"][user]["avatar"] = img_str
+                    save_data(db)
+                    
+                    trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
+                    
+    with tab_symbiote:
+        st.markdown("<p style='color:#39ff14; margin-top:10px;'>Observation de l'entité cybernétique en taille réelle.</p>", unsafe_allow_html=True)
+        
+        familier_svg = db["utilisateurs"][user].get("familier_svg", None)
+        classe_fam = db["utilisateurs"][user].get("classe_familier", "Équilibré")
+        
+        if familier_svg:
+            # 1. Nettoyage absolu et Laser anti-fond
+            svg_propre = re.sub(r'', '', familier_svg, flags=re.DOTALL)
+            svg_propre = svg_propre.replace("```xml", "").replace("```html", "").replace("```", "")
+            svg_propre = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_propre, flags=re.IGNORECASE)
+            svg_propre = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_propre, flags=re.IGNORECASE)
+            svg_propre = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', svg_propre, flags=re.IGNORECASE)
+            
+            # 2. Dimensions dynamiques pour s'étendre au maximum dans la chambre
+            svg_propre = re.sub(r'width="[^"]*"', 'width="100%"', svg_propre, count=1, flags=re.IGNORECASE)
+            svg_propre = re.sub(r'height="[^"]*"', 'height="100%"', svg_propre, count=1, flags=re.IGNORECASE)
+            svg_propre = svg_propre.replace('\n', ' ').strip()
+            
+            # 3. Adaptation de l'aura lumineuse selon la classe (Couleur du néon)
+            if "Kamikaze" in classe_fam:
+                couleur_aura = "rgba(255, 0, 85, 0.7)"
+                border_color = "#ff0055"
+            elif "Prudent" in classe_fam:
+                couleur_aura = "rgba(0, 255, 255, 0.7)"
+                border_color = "#00ffff"
+            else:
+                couleur_aura = "rgba(57, 255, 20, 0.7)"
+                border_color = "#39ff14"
+            
+            # 4. Le Caisson Holographique CSS
+            html_showcase = f"""
+            <style>
+                .symbiote-showcase {{
+                    background: radial-gradient(circle at center, #090014 0%, #000000 100%);
+                    border: 3px solid {border_color};
+                    box-shadow: 0 0 30px {couleur_aura}, inset 0 0 60px rgba(0,0,0,0.9);
+                    border-radius: 15px;
+                    margin-top: 15px;
+                    position: relative;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 450px;
+                    overflow: hidden;
+                }}
+                /* La grille matricielle de fond */
+                .symbiote-grid {{
+                    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                    background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+                    background-size: 30px 30px;
+                    pointer-events: none;
+                    z-index: 1;
+                }}
+                /* L'étiquette de données en haut à gauche */
+                .symbiote-tag {{
+                    position: absolute; top: 15px; left: 20px;
+                    color: {border_color}; font-family: 'Courier New', monospace;
+                    font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px {border_color};
+                    z-index: 5;
+                    background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; border-left: 3px solid {border_color};
+                }}
+                /* Le conteneur du monstre (qui lévite) */
+                .symbiote-container {{
+                    width: 320px; height: 320px;
+                    filter: drop-shadow(0 0 25px {border_color});
+                    animation: float-showcase 4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+                    z-index: 10;
+                }}
+                @keyframes float-showcase {{
+                    0% {{ transform: translateY(15px) scale(0.98); }}
+                    100% {{ transform: translateY(-15px) scale(1.02); filter: drop-shadow(0 0 45px {border_color}); }}
+                }}
+            </style>
+            
+            <div class="symbiote-showcase">
+                <div class="symbiote-grid"></div>
+                <div class="symbiote-tag">ALIGNEMENT : {classe_fam.split(' ')[0].upper()}</div>
+                <div class="symbiote-container">
+                    {svg_propre}
+                </div>
+            </div>
+            """
+            st.markdown(html_showcase, unsafe_allow_html=True)
+            
+        else:
+            st.warning("⚠️ Aucun Symbiote détecté dans vos registres. Rendez-vous à la Clinique Cybernétique pour commencer une incubation.")
 
 elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     st.subheader("LABORATOIRE D'ÉVOLUTION SYMBIOTIQUE")
