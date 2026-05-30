@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG en curseur GÉANT, figé et ultra-visible avec une aura."""
+    """Transforme le SVG en curseur (Taille 64x64 Sécurisée), figé et visible avec aura."""
     if not svg_code:
         return
 
@@ -31,33 +31,29 @@ def activer_curseur_symbiote(svg_code):
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Sécurisation d'urgence (si l'IA a oublié d'envelopper son code)
+    # 2. Sécurisation de l'enveloppe
     if not svg_curseur.lower().startswith("<svg"):
-        svg_curseur = f'<svg viewBox="0 0 200 200" width="112" height="112" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
+        svg_curseur = f'<svg viewBox="0 0 200 200" width="64" height="64" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
 
-    # 3. LA CONGÉLATION ANTI-FANTÔME 🧊
-    # On détruit TOUTES les balises <animate> générées par l'IA. 
-    # Le familier sera figé dans sa position la plus brillante pour le curseur.
+    # 3. CONGÉLATION (Détruit les animations pour éviter le bug de transparence)
     svg_curseur = re.sub(r'<animate[^>]*>', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 4. Destruction des filtres de flou et des gros fonds noirs
+    # 4. Nettoyage des filtres flous et gros fonds
     svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*>.*?</rect>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*/>', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 5. MUTATION TITANESQUE SÉCURISÉE (On passe à 112x112)
-    svg_curseur = re.sub(r'(<svg[^>]*?)width="[^"]*"', r'\g<1>width="112"', svg_curseur, count=1, flags=re.IGNORECASE)
-    svg_curseur = re.sub(r'(<svg[^>]*?)height="[^"]*"', r'\g<1>height="112"', svg_curseur, count=1, flags=re.IGNORECASE)
+    # 5. TAILLE OPTIMISÉE (64x64 - La limite parfaite pour tous les écrans)
+    svg_curseur = re.sub(r'(<svg[^>]*?)width="[^"]*"', r'\g<1>width="64"', svg_curseur, count=1, flags=re.IGNORECASE)
+    svg_curseur = re.sub(r'(<svg[^>]*?)height="[^"]*"', r'\g<1>height="64"', svg_curseur, count=1, flags=re.IGNORECASE)
 
-    # Note : J'ai supprimé la division "stroke-width/3". Tes traits vont retrouver toute leur épaisseur d'origine !
-
-    # 6. INJECTION DE L'AURA (Particules solides, sans clignotement pour ne pas faire buguer l'OS)
+    # 6. INJECTION DE L'AURA (Les 4 petits carrés qui l'accompagnent)
     particules_aura = """
-    <rect x="25" y="25" width="8" height="8" fill="#39ff14" opacity="0.9" />
-    <rect x="165" y="35" width="6" height="6" fill="#00ffff" opacity="0.9" />
-    <rect x="35" y="165" width="10" height="10" fill="#ff00ff" opacity="0.9" />
-    <rect x="160" y="160" width="7" height="7" fill="#ffff00" opacity="0.9" />
+    <rect x="25" y="25" width="10" height="10" fill="#39ff14" opacity="0.9" />
+    <rect x="165" y="35" width="8" height="8" fill="#00ffff" opacity="0.9" />
+    <rect x="35" y="165" width="12" height="12" fill="#ff00ff" opacity="0.9" />
+    <rect x="160" y="160" width="9" height="9" fill="#ffff00" opacity="0.9" />
     </svg>
     """
     svg_curseur = re.sub(r'</svg>', particules_aura, svg_curseur, flags=re.IGNORECASE)
@@ -66,13 +62,14 @@ def activer_curseur_symbiote(svg_code):
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
+        # Le '32 32' place le clic exactement au milieu du curseur 64x64
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 56 56, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, auto !important;
             }}
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 56 56, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, pointer !important;
             }}
         </style>
         """
