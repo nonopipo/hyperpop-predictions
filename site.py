@@ -1772,7 +1772,6 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
     deck_actuel = u_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
     
     col1, col2, col3 = st.columns(3)
-    # On récupère les noms générés par Gemini pour que le joueur sache ce qu'il équipe !
     choix = {
         "pierre": f"🪨 {attaques_p1.get('pierre', {}).get('nom', 'Blocage')}", 
         "feuille": f"🍃 {attaques_p1.get('feuille', {}).get('nom', 'Zone')}", 
@@ -1804,7 +1803,11 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
     adv_nom = st.selectbox("Cible de l'assaut :", adversaires_valides)
     adv_data = db["utilisateurs"][adv_nom]
     attaques_p2 = adv_data.get("attaques", {})
+    
+    # FIX ANTI-ÉGALITÉ : Si l'adversaire a le deck de base, on le mélange pour éviter les 3 égalités bêtes
     deck_p2 = adv_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
+    if "deck_combat" not in adv_data:
+        random.shuffle(deck_p2) 
     
     st.write(f"Saisissez votre séquence d'attaque contre l'IA de **{adv_nom}** :")
     colA, colB, colC = st.columns(3)
@@ -1830,26 +1833,23 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             
             if coup1 == coup2:
                 vainqueur = 0
-                texte = f"CHOC ! [{nom_atk1}] annule [{nom_atk2}] ! Dégâts mineurs."
-                dmg1, dmg2 = 15, 15
+                texte = f"CHOC ! [{nom_atk1}] annule [{nom_atk2}] !"
             elif victoires[coup1] == coup2:
                 vainqueur = 1
-                texte = f"BIM ! [{nom_atk1}] détruit [{nom_atk2}] ! Frappe critique !"
-                dmg1, dmg2 = 0, 40
+                texte = f"BIM ! [{nom_atk1}] détruit [{nom_atk2}] !"
             else:
                 vainqueur = 2
-                texte = f"AÏE ! [{nom_atk2}] écrase [{nom_atk1}] ! Ta défense cède !"
-                dmg1, dmg2 = 40, 0
+                texte = f"AÏE ! [{nom_atk2}] écrase [{nom_atk1}] !"
                 
             script_combat.append({
                 "tour": i+1, "p1_move": coup1, "p2_move": coup2, 
-                "winner": vainqueur, "texte": texte, "dmg1": dmg1, "dmg2": dmg2
+                "winner": vainqueur, "texte": texte
             })
             
         script_json = json.dumps(script_combat)
 
         # ==========================================
-        # 4. LE TRAITEMENT DES IMAGES (Anti-bug B64)
+        # 4. LE TRAITEMENT DES IMAGES
         # ==========================================
         def get_b64(svg_str):
             if not svg_str: return ""
@@ -1863,20 +1863,18 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             s = s.replace('\n', ' ').strip()
             return "data:image/svg+xml;base64," + base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
-        # Joueur 1 (Toi)
         b1_base = get_b64(u_data.get("familier_svg"))
         b1_p = get_b64(attaques_p1.get("pierre", {}).get("svg_overlay"))
         b1_f = get_b64(attaques_p1.get("feuille", {}).get("svg_overlay"))
         b1_c = get_b64(attaques_p1.get("ciseaux", {}).get("svg_overlay"))
         
-        # Joueur 2 (Adversaire)
         b2_base = get_b64(adv_data.get("familier_svg"))
         b2_p = get_b64(attaques_p2.get("pierre", {}).get("svg_overlay"))
         b2_f = get_b64(attaques_p2.get("feuille", {}).get("svg_overlay"))
         b2_c = get_b64(attaques_p2.get("ciseaux", {}).get("svg_overlay"))
 
         # ==========================================
-        # 5. LE MOTEUR DE RENDU (Le Marionnettiste)
+        # 5. LE MOTEUR DE RENDU (RONDS DE TIRS AU BUT)
         # ==========================================
         html_arena = f"""
         <!DOCTYPE html>
@@ -1889,14 +1887,14 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; box-sizing: border-box; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
             .grid {{ position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom; opacity: 0.5; bottom: -20%; }}
             
-            /* BARRES DE VIE */
+            /* LES RONDS (TIRS AU BUT) */
             .hud {{ position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 10; }}
-            .hp-box {{ width: 35%; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 5px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
-            .hp-bar-bg {{ width: 100%; height: 15px; background: #333; position: relative; overflow: hidden; }}
-            .hp-bar-fill {{ height: 100%; background: #39ff14; width: 100%; transition: width 0.3s ease-out; box-shadow: 0 0 10px #39ff14; }}
-            .hp-name {{ font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; }}
+            .hp-box {{ width: auto; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 10px 20px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
+            .hp-name {{ font-weight: bold; font-size: 1.2rem; margin-bottom: 8px; text-transform: uppercase; color: #fff; }}
+            .dot-container {{ display: flex; gap: 15px; }}
+            .dot {{ width: 20px; height: 20px; border-radius: 50%; background: #111; border: 2px solid #444; transition: all 0.3s ease; }}
             
-            /* LES COMBATTANTS ET LES CALQUES (OVERLAYS) */
+            /* LES COMBATTANTS ET LES CALQUES */
             .stage {{ position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: space-between; padding: 0 100px; box-sizing: border-box; z-index: 5; }}
             .fighter {{ position: relative; width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); transition: transform 0.2s; }}
             .base-sprite {{ position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1; }}
@@ -1929,11 +1927,19 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             <div class="hud">
                 <div class="hp-box">
                     <div class="hp-name">{user}</div>
-                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p1"></div></div>
+                    <div class="dot-container" style="justify-content: flex-start;">
+                        <div class="dot" id="p1-dot-1"></div>
+                        <div class="dot" id="p1-dot-2"></div>
+                        <div class="dot" id="p1-dot-3"></div>
+                    </div>
                 </div>
                 <div class="hp-box" style="border-color:#ff00ff; box-shadow: 0 0 10px #ff00ff;">
                     <div class="hp-name" style="text-align:right;">{adv_nom}</div>
-                    <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p2" style="background:#ff00ff; box-shadow: 0 0 10px #ff00ff; float:right;"></div></div>
+                    <div class="dot-container" style="justify-content: flex-end;">
+                        <div class="dot" id="p2-dot-1"></div>
+                        <div class="dot" id="p2-dot-2"></div>
+                        <div class="dot" id="p2-dot-3"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1944,7 +1950,8 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
                     <img src="{b1_f}" class="overlay-sprite" id="p1-feuille">
                     <img src="{b1_c}" class="overlay-sprite" id="p1-ciseaux">
                 </div>
-                <div class="fighter" id="p2" style="transform: scaleX(-1);"> <img src="{b2_base}" class="base-sprite">
+                <div class="fighter" id="p2" style="transform: scaleX(-1);">
+                    <img src="{b2_base}" class="base-sprite">
                     <img src="{b2_p}" class="overlay-sprite" id="p2-pierre">
                     <img src="{b2_f}" class="overlay-sprite" id="p2-feuille">
                     <img src="{b2_c}" class="overlay-sprite" id="p2-ciseaux">
@@ -1960,12 +1967,10 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             const dialogue = document.getElementById('dialogue');
             const p1 = document.getElementById('p1');
             const p2 = document.getElementById('p2');
-            const hp1 = document.getElementById('hp-p1');
-            const hp2 = document.getElementById('hp-p2');
             const arena = document.getElementById('arena');
             
-            let vieP1 = 100;
-            let vieP2 = 100;
+            let scoreP1 = 0;
+            let scoreP2 = 0;
             let started = false;
 
             function typeWriter(text, i, cb) {{
@@ -1988,20 +1993,32 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
                         if(over1) over1.style.opacity = 1;
                         if(over2) over2.style.opacity = 1;
                         
-                        // Petite pause "Tension" (On laisse le joueur admirer les auras)
                         await sleep(600); 
 
-                        // 2. CHOC PHYSIQUE
+                        // 2. CHOC PHYSIQUE ET MISE A JOUR DES PASTILLES
+                        let dot1 = document.getElementById('p1-dot-' + tour.tour);
+                        let dot2 = document.getElementById('p2-dot-' + tour.tour);
+
                         if(tour.winner === 1) {{
                             p1.classList.add('anim-dash-p1');
                             await sleep(300);
                             p2.classList.add('anim-hit');
                             arena.classList.add('anim-screen-shake');
+                            
+                            // Vert pour P1, Rouge pour P2
+                            dot1.style.background = '#39ff14'; dot1.style.borderColor = '#39ff14'; dot1.style.boxShadow = '0 0 15px #39ff14';
+                            dot2.style.background = '#ff0055'; dot2.style.borderColor = '#ff0055'; dot2.style.boxShadow = '0 0 15px #ff0055';
+                            scoreP1++;
                         }} else if (tour.winner === 2) {{
                             p2.classList.add('anim-dash-p2');
                             await sleep(300);
                             p1.classList.add('anim-hit');
                             arena.classList.add('anim-screen-shake');
+                            
+                            // Rouge pour P1, Vert pour P2
+                            dot1.style.background = '#ff0055'; dot1.style.borderColor = '#ff0055'; dot1.style.boxShadow = '0 0 15px #ff0055';
+                            dot2.style.background = '#39ff14'; dot2.style.borderColor = '#39ff14'; dot2.style.boxShadow = '0 0 15px #39ff14';
+                            scoreP2++;
                         }} else {{
                             // Égalité (Choc frontal)
                             p1.classList.add('anim-dash-p1');
@@ -2010,13 +2027,11 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
                             p1.classList.add('anim-hit');
                             p2.classList.add('anim-hit');
                             arena.classList.add('anim-screen-shake');
+                            
+                            // Orange pour les deux (Égalité)
+                            dot1.style.background = '#eab308'; dot1.style.borderColor = '#eab308'; dot1.style.boxShadow = '0 0 10px #eab308';
+                            dot2.style.background = '#eab308'; dot2.style.borderColor = '#eab308'; dot2.style.boxShadow = '0 0 10px #eab308';
                         }}
-
-                        // 3. ACTUALISATION DES HP
-                        vieP1 = Math.max(0, vieP1 - tour.dmg1);
-                        vieP2 = Math.max(0, vieP2 - tour.dmg2);
-                        hp1.style.width = vieP1 + "%";
-                        hp2.style.width = vieP2 + "%";
 
                         // 4. NETTOYAGE POUR LE PROCHAIN ROUND
                         await sleep(600);
@@ -2042,15 +2057,15 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
                     await playTurn(scriptJson[i]);
                 }}
                 
-                // FIN DU COMBAT
-                if(vieP1 > vieP2) {{
-                    typeWriter("VICTOIRE TOTALE ! L'entité ennemie est anéantie.", 0);
+                // FIN DU COMBAT BASEE SUR LES PASTILLES
+                if(scoreP1 > scoreP2) {{
+                    typeWriter("VICTOIRE TOTALE ! Le symbiote ennemi est maîtrisé.", 0);
                     p2.classList.add('anim-ko');
-                }} else if (vieP2 > vieP1) {{
-                    typeWriter("DÉFAITE CRITIQUE... Votre entité succombe.", 0);
+                }} else if (scoreP2 > scoreP1) {{
+                    typeWriter("DÉFAITE CRITIQUE... Votre entité est mise hors-ligne.", 0);
                     p1.classList.add('anim-ko');
                 }} else {{
-                    typeWriter("ÉGALITÉ. Les deux matrices sont à plat.", 0);
+                    typeWriter("ÉGALITÉ PARFAITE. Aucun ascendant tactique.", 0);
                     p1.classList.add('anim-ko');
                     p2.classList.add('anim-ko');
                 }}
