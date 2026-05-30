@@ -1092,8 +1092,13 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
         st.markdown("### Terminal de Mutation (Coût : 50 Brins)")
         
         nouvelle_requete = st.text_input("Saisissez la mutation désirée :", placeholder="ex: Ajoute des ailes de néon rouge")
-        style_joueur = st.selectbox("Alignement de l'Entité :", ["Kamikaze (Agressif)", "Prudent (Défensif)", "Équilibré"])
-        
+        options_alignement = [
+                    "Équilibré (Gain normal | Perte normale)",
+                    "Kamikaze (Gain +15% | Perte +10% en cas d'échec)",
+                    "Prudent (Gain normal | Bouclier : Perte réduite de 15%)"
+                ]
+                style_joueur = st.selectbox("Alignement de l'Entité (Impacte vos paris) :", options_alignement)
+    
         if st.button("Lancer la Séquence 🧬"):
             if brins_actuels < 50:
                 st.error("Brins d'ADN insuffisants. L'incubation demande plus de matière.")
