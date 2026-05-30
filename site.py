@@ -1549,7 +1549,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
                     st.code(nouveau_svg)
 
-    # ==========================================
+# ==========================================
     # 🎰 LA LOTERIE MUTAGÈNE (GACHA)
     # ==========================================
     st.markdown("""<hr style="border-color: #ff00ff; border-width: 3px; border-style: dashed; margin: 40px 0;">""", unsafe_allow_html=True)
@@ -1572,11 +1572,81 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
         
     with col_gacha_btn:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("TIRER LE LEVIER (5 ADN) ☄️", key="btn_gacha", use_container_width=True):
+        
+        # 1. LE BOUTON CACHÉ (Le vrai déclencheur Python)
+        bouton_cache = st.button("EXEC_GACHA", key="btn_gacha_hidden")
+        
+        # 2. LE LEVIER INTERACTIF PHYSIQUE (Pure JS/HTML)
+        import streamlit.components.v1 as components
+        components.html("""
+        <style>
+            body { margin:0; display:flex; justify-content:center; align-items:center; background: transparent; user-select: none; }
+            .lever-container { position: relative; width: 70px; height: 180px; background: #111; border: 4px solid #ff00ff; border-radius: 35px; box-shadow: inset 0 0 20px #000, 0 0 20px rgba(255,0,255,0.4); overflow: hidden; }
+            .lever-track { position: absolute; top: 15px; bottom: 15px; left: 30px; width: 10px; background: #000; border-radius: 5px; box-shadow: inset 0 0 8px #00ffff; }
+            .lever-handle { position: absolute; top: 10px; left: 1px; width: 60px; height: 60px; background: radial-gradient(circle at 30% 30%, #ff5555, #aa0000); border-radius: 50%; box-shadow: 0 0 20px #ff0055, inset -5px -5px 15px rgba(0,0,0,0.6), inset 5px 5px 15px rgba(255,255,255,0.5); cursor: grab; z-index: 10; }
+            .lever-handle:active { cursor: grabbing; transform: scale(0.95); }
+            .instruction { color: #00ffff; font-family: 'Arial Black', sans-serif; font-size: 1.2rem; text-align: center; margin-top: 15px; text-shadow: 0 0 10px #00ffff; text-transform: uppercase; letter-spacing: 2px; }
+        </style>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="lever-container" id="container">
+                <div class="lever-track"></div>
+                <div class="lever-handle" id="knob"></div>
+            </div>
+            <div class="instruction" id="txt">TIRER ⬇️</div>
+        </div>
+        <script>
+            /* 1. Dissimulation du bouton Python parent */
+            const parentBtns = window.parent.document.querySelectorAll('button');
+            parentBtns.forEach(b => {
+                if(b.innerText.includes('EXEC_GACHA')) {
+                    b.style.display = 'none';
+                }
+            });
+
+            /* 2. Moteur physique du Drag & Drop */
+            const knob = document.getElementById('knob');
+            const txt = document.getElementById('txt');
+            let isDragging = false;
+            let startY = 0;
+            let currentY = 10;
+
+            knob.addEventListener('mousedown', (e) => { isDragging = true; startY = e.clientY - currentY; });
+            window.addEventListener('mousemove', (e) => {
+                if(!isDragging) return;
+                let y = e.clientY - startY;
+                if(y < 10) y = 10;
+                if(y > 110) {
+                    y = 110;
+                    if(isDragging) {
+                        isDragging = false;
+                        txt.innerText = 'SYNTHÈSE...';
+                        txt.style.color = '#ff00ff';
+                        /* 3. Activation du script Python ! */
+                        parentBtns.forEach(b => { if(b.innerText.includes('EXEC_GACHA')) b.click(); });
+                        /* Auto-remontée du levier */
+                        setTimeout(() => { knob.style.top = '10px'; currentY = 10; txt.innerText = 'TIRER ⬇️'; txt.style.color = '#00ffff'; }, 2000);
+                    }
+                }
+                currentY = y;
+                knob.style.top = y + 'px';
+            });
+            window.addEventListener('mouseup', () => {
+                if(isDragging) {
+                    isDragging = false;
+                    knob.style.transition = 'top 0.3s ease';
+                    knob.style.top = '10px';
+                    currentY = 10;
+                    setTimeout(() => knob.style.transition = '', 300);
+                }
+            });
+        </script>
+        """, height=300)
+
+        # 3. LA LOGIQUE DU GACHA (Gérée secrètement par le bouton)
+        if bouton_cache:
             if brins_actuels < 5:
                 st.error("Fonds ADN insuffisants.")
             else:
-                # 1. TIRAGE AU SORT DU GACHA
                 import random
                 tirage = random.random()
                 if tirage < 0.60:
@@ -1600,21 +1670,42 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     sub_msg = "BADGE 🎰 DÉBLOQUÉ !"
                     gain_type = "badge"
 
-                # 2. L'ANIMATION GENSHIN (CSS APLATIT POUR ÉVITER LES BUGS)
+                # 4. L'ANIMATION GENSHIN (Avec la vraie étoile visible)
                 placeholder_gacha = st.empty()
                 
-                # CSS aplatit et blindé pour la cinématique
                 html_gacha = f"""
                 <style>
                     .gacha-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,0,16,0.98); z-index: 999999; display: flex; justify-content: center; align-items: center; overflow: hidden; }}
-                    .gacha-star {{ position: absolute; top: -20%; left: -20%; width: 6px; height: 120px; background: white; box-shadow: 0 0 30px white, 0 0 60px white; transform: rotate(45deg); animation: shooting-star 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                    .gacha-star::after {{ content:''; position:absolute; top:100%; left:-15px; width:36px; height:500px; background: linear-gradient(to bottom, white, transparent); clip-path: polygon(50% 0%, 100% 10%, 50% 100%, 0% 10%); }}
-                    @keyframes shooting-star {{
-                        0% {{ top: -20%; left: -20%; transform: rotate(45deg) scale(1); filter: drop-shadow(0 0 20px white); }}
-                        50% {{ top: 40%; left: 40%; transform: rotate(45deg) scale(1.5); filter: drop-shadow(0 0 80px {couleur}); background: {couleur}; }}
-                        60% {{ top: 50%; left: 50%; transform: rotate(45deg) scale(0); opacity: 0; }}
-                        100% {{ top: 50%; left: 50%; transform: rotate(45deg) scale(0); opacity: 0; }}
+                    
+                    /* LA TÊTE DE L'ÉTOILE (Ronde et massive) */
+                    .gacha-star-head {{
+                        position: absolute; top: -20%; left: -20%;
+                        width: 50px; height: 50px; background: white; border-radius: 50%;
+                        box-shadow: 0 0 50px 20px white, inset 0 0 20px #00ffff;
+                        animation: shooting-star 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                        z-index: 10;
                     }}
+                    
+                    /* LA TRAÎNÉE DE LA COMÈTE (Détachée et étirée en diagonale) */
+                    .gacha-star-head::after {{
+                        content: ''; position: absolute;
+                        top: 50%; right: 50%;
+                        width: 800px; height: 15px;
+                        background: linear-gradient(to left, white, rgba(255,255,255,0.4), transparent);
+                        transform: translateY(-50%) rotate(45deg);
+                        transform-origin: right center;
+                        border-radius: 10px;
+                        filter: drop-shadow(0 0 20px white);
+                        z-index: -1;
+                    }}
+                    
+                    @keyframes shooting-star {{
+                        0% {{ top: -20%; left: -20%; filter: drop-shadow(0 0 20px white); }}
+                        50% {{ top: 50%; left: 50%; filter: drop-shadow(0 0 80px {couleur}); background: {couleur}; box-shadow: 0 0 40px 20px {couleur}; }}
+                        60% {{ top: 50%; left: 50%; transform: scale(0); opacity: 0; }}
+                        100% {{ top: 50%; left: 50%; transform: scale(0); opacity: 0; }}
+                    }}
+                    
                     .gacha-flash {{ position: absolute; width: 10px; height: 10px; background: {couleur}; border-radius: 50%; opacity: 0; animation: gacha-bang 3s ease-out 1.1s forwards; box-shadow: 0 0 200px 100px {couleur}; }}
                     @keyframes gacha-bang {{ 0% {{ opacity:0; transform:scale(0); }} 10% {{ opacity:1; transform:scale(80); background: white; }} 30% {{ opacity:0.8; background: {couleur}; transform:scale(150); }} 100% {{ opacity:0; transform:scale(200); }} }}
                     .gacha-result {{ opacity: 0; color: white; font-family: 'Arial Black', sans-serif; font-size: 5rem; text-align: center; text-transform: uppercase; animation: show-result 2s cubic-bezier(0.1, 0.9, 0.2, 1) 1.2s forwards; text-shadow: 0 0 30px {couleur}, 0 0 60px {couleur}; z-index: 10; }}
@@ -1622,28 +1713,22 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     .gacha-strobe {{ position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; animation: strobe 0.2s 4 1.0s; z-index: 5; }}
                     @keyframes strobe {{ 0%, 100% {{ opacity: 0; }} 50% {{ opacity: 0.6; }} }}
                 </style>
-                <div class="gacha-screen"><div class="gacha-strobe"></div><div class="gacha-star"></div><div class="gacha-flash"></div><div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div></div>
+                <div class="gacha-screen"><div class="gacha-strobe"></div><div class="gacha-star-head"></div><div class="gacha-flash"></div><div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div></div>
                 """
                 
-                # Lancement du son et de l'overlay
                 jouer_son_invisible("validation.mp3")
                 placeholder_gacha.markdown(html_gacha, unsafe_allow_html=True)
                 
-                # 3. PAUSE PYTHON PENDANT LA CINÉMATIQUE (4.5 secondes)
                 import time
                 time.sleep(4.5)
                 placeholder_gacha.empty()
                 
-                # 4. DISTRIBUTION DES GAINS ET SAUVEGARDE
-                db["utilisateurs"][user]["brins_adn"] -= 5 # On fait payer le ticket
+                # Encaissement et Récompense
+                db["utilisateurs"][user]["brins_adn"] -= 5 
                 
-                if gain_type == "score":
-                    db["utilisateurs"][user]["score"] += 10
-                elif gain_type == "adn":
-                    db["utilisateurs"][user]["brins_adn"] += 50
-                elif gain_type == "badge":
-                    if "🎰" not in db["utilisateurs"][user]["badges"]:
-                        db["utilisateurs"][user]["badges"].append("🎰")
+                if gain_type == "score": db["utilisateurs"][user]["score"] += 10
+                elif gain_type == "adn": db["utilisateurs"][user]["brins_adn"] += 50
+                elif gain_type == "badge" and "🎰" not in db["utilisateurs"][user]["badges"]: db["utilisateurs"][user]["badges"].append("🎰")
                         
                 save_data(db)
                 st.rerun()
