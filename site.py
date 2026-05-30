@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG du joueur en curseur vectoriel pur (sans filtres)."""
+    """Transforme le SVG du joueur en curseur vectoriel GÉANT."""
     if not svg_code:
         return
 
@@ -31,21 +31,18 @@ def activer_curseur_symbiote(svg_code):
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. DESTRUCTION DES FILTRES DE FLOU (La cause du bug "traits épais")
-    # On retire les balises <filter>...</filter>
+    # 2. Destruction des filtres de flou (Pour garder les traits nets)
     svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
-    # On retire les appels filter="url(#glow)"
     svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 3. Calibrage Rétina (48x48 est la taille parfaite pour les OS modernes)
-    svg_curseur = re.sub(r'width="\d+"', 'width="48"', svg_curseur)
-    svg_curseur = re.sub(r'height="\d+"', 'height="48"', svg_curseur)
+    # 3. MUTATION DE TAILLE (On passe à 80x80 pixels)
+    svg_curseur = re.sub(r'width="\d+"', 'width="80"', svg_curseur)
+    svg_curseur = re.sub(r'height="\d+"', 'height="80"', svg_curseur)
 
-    # 4. Affinage Mathématique Sécurisé (Division par 3 de l'épaisseur des traits restants)
+    # 4. Affinage Mathématique
     def affiner_trait(match):
         try:
             epaisseur = float(match.group(1))
-            # On divise par 3, avec un minimum de 0.3px pour ne pas effacer le trait
             return f'stroke-width="{max(0.3, epaisseur / 3)}"'
         except:
             return match.group(0)
@@ -56,14 +53,14 @@ def activer_curseur_symbiote(svg_code):
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # Le '24 24' place la pointe du clic exactement au milieu du dessin 48x48
+        # Le '40 40' décale le centre de gravité (le point qui clique vraiment) à la moitié de 80
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 40 40, auto !important;
             }}
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 40 40, pointer !important;
             }}
         </style>
         """
