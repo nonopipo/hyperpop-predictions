@@ -610,7 +610,7 @@ with st.sidebar:
 # ==========================================
 # 5. NAVIGATION & MARCHÉS ACTIFS
 # ==========================================
-liste_pages = ["🔮 Marchés Actifs", "🏆 Classement", "➕ Créer", "📖 Règles","👾 Profil"]
+liste_pages = ["🔮 Marchés Actifs", "🏆 Classement", "➕ Créer", "📖 Règles","👾 Profil","🧬 Clinique Cybernétique"]
 def changer_page(): st.session_state.page_actuelle = st.session_state.radio_menu
 
 choix_menu = st.radio("Menu", liste_pages, horizontal=True, key="radio_menu", index=liste_pages.index(st.session_state.page_actuelle), on_change=changer_page, label_visibility="collapsed")
