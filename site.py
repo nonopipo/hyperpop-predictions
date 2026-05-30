@@ -389,7 +389,7 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_the
     Retourne une chaîne JSON structurée.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         prompt = f"""Tu es un Architecte Cyberpunk. Ta mission est de générer un familier virtuel ET ses 3 attaques uniques basées sur le principe du Pierre-Feuille-Ciseaux.
         - État actuel : {forme_actuelle}
