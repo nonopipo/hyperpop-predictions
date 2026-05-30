@@ -19,41 +19,49 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG du joueur en curseur de souris miniaturisé."""
+    """Transforme le SVG du joueur en curseur HD avec affinage des traits."""
     if not svg_code:
         return
 
-    # 1. Nettoyage absolu (on retire les commentaires qui font planter le CSS)
+    import base64
+    import re
+
+    # 1. Nettoyage
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Miniaturisation (On force la taille à 32x32 pixels, la viewBox se chargera du zoom automatique)
-    # On remplace n'importe quel width="X" par width="32"
-    svg_curseur = re.sub(r'width="\d+"', 'width="32"', svg_curseur)
-    svg_curseur = re.sub(r'height="\d+"', 'height="32"', svg_curseur)
+    # 2. Résolution Rétina (64x64 pour plus de netteté)
+    svg_curseur = re.sub(r'width="\d+"', 'width="64"', svg_curseur)
+    svg_curseur = re.sub(r'height="\d+"', 'height="64"', svg_curseur)
 
-    # 3. Encodage en Base64 (Pour le rendre digeste par le navigateur)
+    # 3. L'Affinage au Scalpel (Réduit l'épaisseur de TOUS les traits)
+    def affiner_trait(match):
+        epaisseur_origine = float(match.group(1))
+        # On divise l'épaisseur par 2.5 (en gardant au minimum 0.5px pour qu'il ne disparaisse pas)
+        nouvelle_epaisseur = max(0.5, epaisseur_origine / 2.5) 
+        return f'stroke-width="{nouvelle_epaisseur}"'
+    
+    # Cherche tous les stroke-width="X" et applique la réduction
+    svg_curseur = re.sub(r'stroke-width="([0-9.]+)"', affiner_trait, svg_curseur)
+
+    # 4. Encodage et Injection
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # 4. Injection CSS Globale
-        # Le '16 16' définit le "point de clic" exactement au centre du curseur (16px, 16px)
+        # Le '32 32' indique que le "bout de la flèche" est exactement au centre du dessin 64x64
         css_curseur = f"""
         <style>
-            /* Écrase le curseur sur toute l'application */
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 16 16, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, auto !important;
             }}
-            
-            /* Force aussi le familier sur les boutons et liens (pour ne pas repasser à la "main" classique) */
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 16 16, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, pointer !important;
             }}
         </style>
         """
+        import streamlit as st
         st.markdown(css_curseur, unsafe_allow_html=True)
     except Exception as e:
-        # En cas d'erreur de conversion, on ne fait rien pour ne pas bloquer l'app
         pass
 
 def injecter_design():
