@@ -976,8 +976,8 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                         db["utilisateurs"][user]["familier_svg"] = nouveau_svg
                         db["utilisateurs"][user]["familier_desc"] = nouvelle_requete # On sauvegarde pour la prochaine mutation
                         
-                        # 3. Sauvegarde sur GitHub (ta fonction de sauvegarde Gist)
-                        sauvegarder_gist() 
+                        # 3. Sauvegarde sur GitHub (ta vraie fonction)
+                        save_data(db)) 
                         
                         st.success("Mutation réussie ! Entité mise à jour.")
                         st.balloons()
