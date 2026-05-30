@@ -1673,24 +1673,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
 # 4. L'ANIMATION GENSHIN (Avec la vraie étoile visible ET SON SYNCHRONISÉ)
                 placeholder_gacha = st.empty()
                 
-                # --- NOUVEAU : PRÉPARATION DU SON À RETARDEMENT ---
-                try:
-                    import base64
-                    with open("validation.mp3", "rb") as f:
-                        b64_audio = base64.b64encode(f.read()).decode()
-                        # L'audio n'a plus d'autoplay. Le JS le déclenche au bout de 1100ms !
-                        lecteur_audio_retarde = f"""
-                        <audio id="gacha-boom" style="display:none;"><source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3"></audio>
-                        <script>
-                            setTimeout(function() {{
-                                var audio = document.getElementById('gacha-boom');
-                                if(audio) audio.play();
-                            }}, 1100); /* 1.1s = Le timing exact où l'étoile touche le centre */
-                        </script>
-                        """
-                except:
-                    lecteur_audio_retarde = ""
-                # ---------------------------------------------------
+
 
                 html_gacha = f"""
                 <style>
