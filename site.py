@@ -1502,55 +1502,89 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                 """
                 placeholder_chargement.markdown(html_loader, unsafe_allow_html=True)
                 
-                nouveau_svg = muter_entite_avec_gemini(forme_actuelle=forme_historique, requete=nouvelle_requete, niveau=points_actuels, style=style_joueur, dernier_theme=theme_a_envoyer)
+ # 1. On appelle l'Architecte (qui renvoie maintenant un JSON)
+                reponse_brute = muter_entite_avec_gemini(forme_actuelle=forme_historique, requete=nouvelle_requete, niveau=points_actuels, style=style_joueur, dernier_theme=theme_a_envoyer)
                 placeholder_chargement.empty()
                 
-                if nouveau_svg.startswith("<svg"):
+                try:
+                    import json
                     import re
-                    def clean_evo(svg):
-                        if not svg: return "<div style='font-size:150px; text-align:center;'>🦠</div>"
-                        s = re.sub(r'', '', svg, flags=re.DOTALL)
-                        s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-                        s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-                        s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
-                        s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
-                        s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
-                        return s.replace('\n', ' ').strip()
                     
-                    svg_old_clean = clean_evo(familier_svg)
-                    svg_new_clean = clean_evo(nouveau_svg)
+                    # 2. On décrypte le JSON reçu
+                    data_mutation = json.loads(reponse_brute)
                     
-                    html_evolution = f"""
-                    <style>
-                        .evo-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #150030 0%, #000000 100%); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }}
-                        .evo-stage {{ position: relative; width: 450px; height: 450px; display: flex; justify-content: center; align-items: center; }}
-                        .evo-sprite {{ position: absolute; width: 100%; height: 100%; }}
-                        .sprite-old {{ animation: poke-evo-old 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                        .sprite-new {{ opacity: 0; animation: poke-evo-new 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                        .evo-flashbang {{ position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; animation: bang 5.5s ease-out forwards; box-shadow: 0 0 200px 100px white; }}
-                        .evo-text {{ color: white; font-family: 'Arial Black', sans-serif; font-size: 2.5rem; margin-top: 50px; text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff; animation: pulse-text 0.5s infinite alternate; }}
-                        @keyframes poke-evo-old {{ 0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }} 10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }} 25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }} 40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }} 52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }} 62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }} 100% {{ opacity: 0; }} }}
-                        @keyframes poke-evo-new {{ 0% {{ opacity: 0; }} 15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }} 30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }} 45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }} 55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }} 65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }} 70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }} 85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} 100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} }}
-                        @keyframes bang {{ 0%, 65% {{ opacity: 0; transform: scale(0); }} 70% {{ opacity: 1; transform: scale(50); }} 85%, 100% {{ opacity: 0; transform: scale(100); }} }}
-                        @keyframes pulse-text {{ 0% {{ opacity: 0.5; transform: scale(0.95); }} 100% {{ opacity: 1; transform: scale(1.05); }} }}
-                    </style>
-                    <div class="evo-screen"><div class="evo-stage"><div class="evo-sprite sprite-old">{svg_old_clean}</div><div class="evo-sprite sprite-new">{svg_new_clean}</div><div class="evo-flashbang"></div></div><div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !</div></div>
-                    """
+                    nouveau_svg_base = data_mutation.get("svg_base", "")
+                    attaques_generees = data_mutation.get("attaques", {})
                     
-                    placeholder_evo = st.empty()
-                    placeholder_evo.markdown(html_evolution, unsafe_allow_html=True)
-                    jouer_son_invisible("validation.mp3") 
-                    import time
-                    time.sleep(6)
-                    placeholder_evo.empty()
-                    
-                    db["utilisateurs"][user]["brins_adn"] -= 50
-                    db["utilisateurs"][user]["familier_svg"] = nouveau_svg
-                    db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
-                    db["utilisateurs"][user]["classe_familier"] = style_joueur
-                    save_data(db)
-                    st.balloons()
-                    st.rerun()
+                    if nouveau_svg_base.startswith("<svg"):
+                        def clean_evo(svg):
+                            if not svg: return "<div style='font-size:150px; text-align:center;'>🦠</div>"
+                            s = re.sub(r'', '', svg, flags=re.DOTALL)
+                            s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                            s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                            s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
+                            s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
+                            s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
+                            return s.replace('\n', ' ').strip()
+                        
+                        svg_old_clean = clean_evo(familier_svg)
+                        svg_new_clean = clean_evo(nouveau_svg_base) # On utilise bien le SVG de base !
+                        
+                        html_evolution = f"""
+                        <style>
+                            .evo-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #150030 0%, #000000 100%); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }}
+                            .evo-stage {{ position: relative; width: 450px; height: 450px; display: flex; justify-content: center; align-items: center; }}
+                            .evo-sprite {{ position: absolute; width: 100%; height: 100%; }}
+                            .sprite-old {{ animation: poke-evo-old 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
+                            .sprite-new {{ opacity: 0; animation: poke-evo-new 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
+                            .evo-flashbang {{ position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; animation: bang 5.5s ease-out forwards; box-shadow: 0 0 200px 100px white; }}
+                            .evo-text {{ color: white; font-family: 'Arial Black', sans-serif; font-size: 2.5rem; margin-top: 50px; text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff; animation: pulse-text 0.5s infinite alternate; text-align: center; }}
+                            @keyframes poke-evo-old {{ 0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }} 10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }} 25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }} 40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }} 52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }} 62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }} 100% {{ opacity: 0; }} }}
+                            @keyframes poke-evo-new {{ 0% {{ opacity: 0; }} 15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }} 30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }} 45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }} 55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }} 65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }} 70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }} 85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} 100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} }}
+                            @keyframes bang {{ 0%, 65% {{ opacity: 0; transform: scale(0); }} 70% {{ opacity: 1; transform: scale(50); }} 85%, 100% {{ opacity: 0; transform: scale(100); }} }}
+                            @keyframes pulse-text {{ 0% {{ opacity: 0.5; transform: scale(0.95); }} 100% {{ opacity: 1; transform: scale(1.05); }} }}
+                        </style>
+                        <div class="evo-screen">
+                            <div class="evo-stage">
+                                <div class="evo-sprite sprite-old">{svg_old_clean}</div>
+                                <div class="evo-sprite sprite-new">{svg_new_clean}</div>
+                                <div class="evo-flashbang"></div>
+                            </div>
+                            <div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !<br><span style="font-size:1.2rem; color:#ff00ff;">Acquisition de 3 compétences de combat...</span></div>
+                        </div>
+                        """
+                        
+                        placeholder_evo = st.empty()
+                        placeholder_evo.markdown(html_evolution, unsafe_allow_html=True)
+                        jouer_son_invisible("validation.mp3") 
+                        import time
+                        time.sleep(6)
+                        placeholder_evo.empty()
+                        
+                        # 3. SAUVEGARDE GLOBALE
+                        db["utilisateurs"][user]["brins_adn"] -= 50
+                        # On sauvegarde UNIQUEMENT la base pour le curseur/profil
+                        db["utilisateurs"][user]["familier_svg"] = nouveau_svg_base 
+                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
+                        db["utilisateurs"][user]["classe_familier"] = style_joueur
+                        
+                        # NOUVEAU : On sauvegarde les attaques secrètes pour l'Arène !
+                        db["utilisateurs"][user]["attaques"] = attaques_generees
+                        
+                        # On ajoute aussi un deck par défaut pour le Pierre-Feuille-Ciseaux si c'est sa 1ère fois
+                        if "deck_combat" not in db["utilisateurs"][user]:
+                            db["utilisateurs"][user]["deck_combat"] = ["pierre", "feuille", "ciseaux"]
+                            
+                        save_data(db)
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("Le format JSON est bon, mais l'image de base générée est corrompue.")
+                        st.code(nouveau_svg_base)
+                        
+                except Exception as e:
+                    st.error("Échec du séquençage ADN. L'Architecte a bafouillé son code.")
+                    st.code(reponse_brute)
                 else:
                     st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
                     st.code(nouveau_svg)
