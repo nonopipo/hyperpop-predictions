@@ -773,7 +773,7 @@ with st.sidebar:
 # ==========================================
 # 5. NAVIGATION & MARCHÉS ACTIFS
 # ==========================================
-liste_pages = ["🔮 Marchés Actifs", "🏆 Classement", "➕ Créer", "📖 Règles","👾 Profil","🧬 Clinique Cybernétique"]
+liste_pages = ["🔮 Marchés Actifs", "🏆 Classement", "➕ Créer", "📖 Règles","👾 Profil","🧬 Clinique Cybernétique","⚔️ Arène"]
 def changer_page(): st.session_state.page_actuelle = st.session_state.radio_menu
 
 choix_menu = st.radio("Menu", liste_pages, horizontal=True, key="radio_menu", index=liste_pages.index(st.session_state.page_actuelle), on_change=changer_page, label_visibility="collapsed")
@@ -1725,3 +1725,248 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                         
                 save_data(db)
                 st.rerun()
+
+elif st.session_state.page_actuelle == "⚔️ Arène":
+    import json
+    import base64
+    import random
+    import re
+    import streamlit.components.v1 as components
+
+    st.subheader("⚔️ L'ARÈNE DU CODE (Test d'Animation)")
+    st.markdown("Bienvenue dans le simulateur de combat. Observez la chorégraphie générée par l'Architecte.")
+
+    # 1. On récupère ton SVG et on le nettoie
+    u_data = db["utilisateurs"].get(user, {})
+    ton_svg = u_data.get("familier_svg", "")
+    
+    # Fonction de nettoyage rapide (sans fond)
+    def clean_svg_arena(svg_code):
+        if not svg_code: return ""
+        s = re.sub(r'', '', svg_code, flags=re.DOTALL)
+        s = s.replace("```xml", "").replace("```html", "").replace("```", "")
+        s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
+        s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
+        return s.replace('\n', ' ').strip()
+
+    ton_svg_propre = clean_svg_arena(ton_svg)
+    
+    # 2. On choisit un adversaire aléatoire
+    adversaires = [v.get("familier_svg") for k, v in db["utilisateurs"].items() if k != user and v.get("familier_svg")]
+    if adversaires:
+        adv_svg = random.choice(adversaires)
+    else:
+        # Drone Rouge de base s'il n'y a personne d'autre
+        adv_svg = "<svg viewBox='0 0 200 200' width='100%' height='100%' xmlns='[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)'><circle cx='100' cy='100' r='50' fill='#090014' stroke='#ff0055' stroke-width='6'/><circle cx='100' cy='100' r='15' fill='#00ffff'></circle></svg>"
+    
+    adv_svg_propre = clean_svg_arena(adv_svg)
+
+    # 3. Encodage B64 pour isolation parfaite dans l'iframe HTML
+    if ton_svg_propre:
+        b64_p1 = base64.b64encode(ton_svg_propre.encode('utf-8')).decode('utf-8')
+        img_p1 = f"data:image/svg+xml;base64,{b64_p1}"
+    else:
+        img_p1 = "" # Géré dans le HTML (Monstre vide)
+
+    b64_p2 = base64.b64encode(adv_svg_propre.encode('utf-8')).decode('utf-8')
+    img_p2 = f"data:image/svg+xml;base64,{b64_p2}"
+
+    # 4. LE SCRIPT DE COMBAT (Ce que l'IA génèrera plus tard)
+    script_combat = [
+        {"tour": 1, "attaquant": 1, "action": "dash", "texte": f"Ton entité charge à la vitesse de la lumière !", "dmg": 20},
+        {"tour": 2, "attaquant": 2, "action": "laser", "texte": f"L'adversaire riposte avec un rayon destructeur !", "dmg": 30},
+        {"tour": 3, "attaquant": 1, "action": "ultime", "texte": f"SURCHARGE DU NOYAU ! L'adversaire est désintégré !", "dmg": 100, "ko": True}
+    ]
+    script_json = json.dumps(script_combat)
+
+    # 5. LE MOTEUR DE RENDU (HTML/CSS/JS)
+    html_arena = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        @import url('[https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap)');
+        body {{ margin: 0; padding: 0; background-color: #050010; color: white; font-family: 'Courier Prime', monospace; overflow: hidden; }}
+        
+        /* LE RING */
+        .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; box-sizing: border-box; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
+        .grid {{ position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom; opacity: 0.5; bottom: -20%; }}
+        
+        /* INTERFACE DES HP */
+        .hud {{ position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 10; }}
+        .hp-box {{ width: 35%; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 5px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
+        .hp-bar-bg {{ width: 100%; height: 15px; background: #333; position: relative; overflow: hidden; }}
+        .hp-bar-fill {{ height: 100%; background: #39ff14; width: 100%; transition: width 0.3s ease-out; box-shadow: 0 0 10px #39ff14; }}
+        .hp-name {{ font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #fff; }}
+        
+        /* LES COMBATTANTS (Les fameux conteneurs "Marionnettes") */
+        .stage {{ position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: space-between; padding: 0 100px; box-sizing: border-box; z-index: 5; }}
+        .fighter {{ width: 150px; height: 150px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); transition: transform 0.2s; }}
+        .fighter img {{ width: 100%; height: 100%; object-fit: contain; }}
+        
+        /* LA BOÎTE DE DIALOGUE */
+        .dialogue-box {{ position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,20,40,0.9); border-top: 3px solid #00ffff; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; font-size: 1.2rem; font-weight: bold; color: #00ffff; text-shadow: 0 0 5px #00ffff; }}
+        
+        /* ==========================================
+           🎬 LES ANIMATIONS CSS (LA MAGIE)
+           ========================================== */
+        
+        /* Attaque au corps à corps (Dash) */
+        .anim-dash-p1 {{ animation: dash-right 0.6s cubic-bezier(0.25, 1, 0.5, 1); }}
+        .anim-dash-p2 {{ animation: dash-left 0.6s cubic-bezier(0.25, 1, 0.5, 1); }}
+        @keyframes dash-right {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(350px) scale(1.2); filter: drop-shadow(0 0 30px #00ffff); }} 100% {{ transform: translateX(0); }} }}
+        @keyframes dash-left {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(-350px) scale(1.2); filter: drop-shadow(0 0 30px #ff00ff); }} 100% {{ transform: translateX(0); }} }}
+        
+        /* Prendre un coup (Hit) */
+        .anim-hit {{ animation: shake-hit 0.4s ease; filter: drop-shadow(0 0 40px red) brightness(2) !important; }}
+        @keyframes shake-hit {{ 0%, 100% {{ transform: translateX(0); }} 20% {{ transform: translateX(-15px) rotate(-10deg); }} 40% {{ transform: translateX(15px) rotate(10deg); }} 60% {{ transform: translateX(-10px); }} 80% {{ transform: translateX(10px); }} }}
+        
+        /* Attaque Laser */
+        .laser-beam {{ position: absolute; top: 50%; height: 8px; background: #ff00ff; box-shadow: 0 0 20px #ff00ff, 0 0 40px white; z-index: 20; opacity: 0; border-radius: 4px; }}
+        .anim-laser-p1 {{ animation: shoot-right 0.5s ease-out; left: 200px; }}
+        .anim-laser-p2 {{ animation: shoot-left 0.5s ease-out; right: 200px; }}
+        @keyframes shoot-right {{ 0% {{ width: 0; opacity: 1; }} 50% {{ width: 400px; opacity: 1; }} 100% {{ width: 0; transform: translateX(400px); opacity: 0; }} }}
+        @keyframes shoot-left {{ 0% {{ width: 0; opacity: 1; }} 50% {{ width: 400px; opacity: 1; }} 100% {{ width: 0; transform: translateX(-400px); opacity: 0; }} }}
+        
+        /* Effets Ultimes (Tremblement d'écran et Flash) */
+        .anim-screen-shake {{ animation: global-shake 0.8s cubic-bezier(.36,.07,.19,.97) both; }}
+        @keyframes global-shake {{ 10%, 90% {{ transform: translate3d(-5px, 5px, 0); }} 20%, 80% {{ transform: translate3d(10px, -5px, 0); }} 30%, 50%, 70% {{ transform: translate3d(-15px, 10px, 0); }} 40%, 60% {{ transform: translate3d(15px, -10px, 0); }} }}
+        
+        .flashbang {{ position: absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:99; pointer-events:none; }}
+        .anim-flash {{ animation: bang 1.5s ease-out; }}
+        @keyframes bang {{ 0% {{ opacity: 1; }} 100% {{ opacity: 0; }} }}
+        
+        .anim-ko {{ animation: fade-out-ko 2s forwards; }}
+        @keyframes fade-out-ko {{ 0% {{ filter: grayscale(0) brightness(1); opacity:1; }} 100% {{ filter: grayscale(1) brightness(0); opacity:0; transform: translateY(50px); }} }}
+
+    </style>
+    </head>
+    <body>
+
+    <div class="arena-container" id="arena">
+        <div class="grid"></div>
+        <div class="flashbang" id="flash"></div>
+        
+        <div class="hud">
+            <div class="hp-box">
+                <div class="hp-name">Ton Entité</div>
+                <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p1"></div></div>
+            </div>
+            <div class="hp-box" style="border-color:#ff00ff; box-shadow: 0 0 10px #ff00ff;">
+                <div class="hp-name" style="text-align:right;">Adversaire</div>
+                <div class="hp-bar-bg"><div class="hp-bar-fill" id="hp-p2" style="background:#ff00ff; box-shadow: 0 0 10px #ff00ff; float:right;"></div></div>
+            </div>
+        </div>
+
+        <div class="stage">
+            <div class="fighter" id="p1"><img src="{img_p1}" onerror="this.style.display='none'"></div>
+            <div class="fighter" id="p2"><img src="{img_p2}"></div>
+        </div>
+        
+        <div class="laser-beam" id="laser"></div>
+
+        <div class="dialogue-box" id="dialogue">Initialisation du combat... Cliquez ici pour démarrer.</div>
+    </div>
+
+    <script>
+        const scriptJson = {script_json};
+        
+        const dialogue = document.getElementById('dialogue');
+        const p1 = document.getElementById('p1');
+        const p2 = document.getElementById('p2');
+        const hp1 = document.getElementById('hp-p1');
+        const hp2 = document.getElementById('hp-p2');
+        const arena = document.getElementById('arena');
+        const flash = document.getElementById('flash');
+        const laser = document.getElementById('laser');
+        
+        let vieP1 = 100;
+        let vieP2 = 100;
+        let started = false;
+
+        function typeWriter(text, i, cb) {{
+            if (i === 0) dialogue.innerHTML = "";
+            if (i < text.length) {{
+                dialogue.innerHTML += text.charAt(i);
+                setTimeout(() => typeWriter(text, i + 1, cb), 25);
+            }} else if (cb) cb();
+        }}
+
+        function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
+
+        async function playTurn(tour) {{
+            return new Promise(resolve => {{
+                // Affichage du texte
+                typeWriter(tour.texte, 0, async () => {{
+                    
+                    const attaquant = tour.attaquant === 1 ? p1 : p2;
+                    const defenseur = tour.attaquant === 1 ? p2 : p1;
+                    const hpBarDef = tour.attaquant === 1 ? hp2 : hp1;
+                    
+                    // 1. ANIMATION DE L'ATTAQUE
+                    if(tour.action === "dash") {{
+                        attaquant.classList.add(tour.attaquant === 1 ? 'anim-dash-p1' : 'anim-dash-p2');
+                        await sleep(300); // Le moment de l'impact
+                    }} 
+                    else if(tour.action === "laser") {{
+                        laser.className = "laser-beam " + (tour.attaquant === 1 ? 'anim-laser-p1' : 'anim-laser-p2');
+                        await sleep(200);
+                    }}
+                    else if(tour.action === "ultime") {{
+                        arena.classList.add('anim-screen-shake');
+                        flash.classList.add('anim-flash');
+                        await sleep(400);
+                    }}
+
+                    // 2. RÉACTION DU DÉFENSEUR (Hit)
+                    defenseur.classList.add('anim-hit');
+                    
+                    // 3. MISE À JOUR DES DEGATS
+                    if(tour.attaquant === 1) {{
+                        vieP2 = Math.max(0, vieP2 - tour.dmg);
+                        hpBarDef.style.width = vieP2 + "%";
+                    }} else {{
+                        vieP1 = Math.max(0, vieP1 - tour.dmg);
+                        hpBarDef.style.width = vieP1 + "%";
+                    }}
+
+                    // 4. NETTOYAGE DES CLASSES
+                    await sleep(600);
+                    attaquant.className = "fighter";
+                    defenseur.className = "fighter";
+                    laser.className = "laser-beam";
+                    arena.className = "arena-container";
+                    flash.className = "flashbang";
+
+                    // 5. VÉRIFICATION DU KO
+                    if(tour.ko) {{
+                        defenseur.classList.add('anim-ko');
+                        await sleep(1500);
+                    }}
+
+                    await sleep(500); // Pause avant le tour suivant
+                    resolve();
+                }});
+            }});
+        }}
+
+        async function startBattle() {{
+            if(started) return;
+            started = true;
+            for(let i=0; i<scriptJson.length; i++) {{
+                await playTurn(scriptJson[i]);
+            }}
+            typeWriter("COMBAT TERMINÉ. MISE À JOUR DE LA MATRICE...", 0);
+        }}
+
+        document.getElementById('arena').addEventListener('click', startBattle);
+
+    </script>
+    </body>
+    </html>
+    """
+    
+    components.html(html_arena, height=450)
