@@ -936,10 +936,10 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     bots_json = json.dumps(bots_svgs)
 
     # LE MOTEUR DE JEU (Syntaxe Javascript "Old School" pour Python)
-    js_game_engine = '''
+js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
     if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
-    if (window.cyberKeyDown) window.removeEventListener("keydown", window.cyberKeyDown);
+    if (window.cyberKeyDown) window.removeEventListener("keydown", window.cyberKeyDown); // Nettoie l'ancien script
     var oldOverlay = document.getElementById("cyber-minigame");
     if (oldOverlay) oldOverlay.remove();
 
@@ -954,6 +954,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     var mouseY = window.innerHeight / 2;
     var dirX = 0, dirY = -1; 
     var playerHp = 100;
+    var playerLastShot = 0; // NOUVEAU : Le compteur de cadence de tir
 
     window.cyberMouseMove = function(e) {
         var dx = e.clientX - mouseX;
@@ -989,17 +990,6 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         };
     });
 
-    window.cyberKeyDown = function(e) {
-        if(e.code === "Space") {
-            e.preventDefault();
-            var el = document.createElement("div");
-            el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:30px;height:8px;background:#39ff14;box-shadow:0 0 20px #39ff14, 0 0 40px #ffff00;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:4px;";
-            overlay.appendChild(el);
-            lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
-        }
-    };
-    window.addEventListener("keydown", window.cyberKeyDown);
-
     function createExplosion(x, y, color) {
         var exp = document.createElement("div");
         exp.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:120px;height:120px;background:radial-gradient(circle, #fff 0%, " + color + " 40%, transparent 100%);border-radius:50%;transform:translate(-50%,-50%);";
@@ -1017,6 +1007,18 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         if(!document.getElementById("cyber-game-anchor")) {
             overlay.remove();
             return;
+        }
+
+        // ==========================================
+        // 🔥 TIR AUTOMATIQUE DU JOUEUR (MACHINE GUN)
+        // ==========================================
+        playerLastShot++;
+        if(playerLastShot > 15) { // <-- CADENCE DE TIR : Baisse ce chiffre pour tirer plus vite !
+            var el = document.createElement("div");
+            el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:30px;height:8px;background:#39ff14;box-shadow:0 0 20px #39ff14, 0 0 40px #ffff00;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:4px;";
+            overlay.appendChild(el);
+            lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
+            playerLastShot = 0; // On remet le compteur à zéro
         }
 
         bots.forEach(function(b) {
