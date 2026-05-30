@@ -899,10 +899,20 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
 elif st.session_state.page_actuelle == "🏆 Classement":
     st.subheader("L'AUTEL DES SOUVERAINS")
     
+    # --- LE LASER ANTI-FOND : Éradique le rectangle blanc/noir de l'IA ---
+    import re
+    def preparer_titan(svg_code):
+        if not svg_code: return ""
+        # On détruit toute balise <rect> de la taille du canvas
+        svg_code = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
+        svg_code = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_code, flags=re.IGNORECASE)
+        # On supprime aussi d'éventuels fonds directement dans la balise <svg>
+        svg_code = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', svg_code, flags=re.IGNORECASE)
+        return svg_code.replace('\n', ' ')
+
     # --- INJECTION DU DESIGN DU TITAN PARALLAXE ---
     st.markdown("""
     <style>
-        /* On transfère la flottaison et la rotation 3D de la carte vers le Holder Global */
         .pantheon-card {
             animation: none !important;
             transform: none !important;
@@ -915,38 +925,35 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
         }
         
-        /* Désynchronisation des animations de gravité */
         .titan-holder-2nd { animation-delay: 0s; }
         .titan-holder-1st { animation-delay: -2s; z-index: 10; }
         .titan-holder-3rd { animation-delay: -4s; }
         
-        /* L'interaction physique : Tout le bloc (carte + titan) bascule au survol */
         .titan-holder:hover {
             transform: translateY(-25px) scale(1.05) rotateX(18deg) rotateY(-12deg) !important;
             z-index: 30 !important;
         }
         
-        /* LE TITAN SPECTRAL (L'animal géant en arrière-plan) */
+        /* LE TITAN SPECTRAL */
         .titan-spectre {
             position: absolute;
-            top: -55%; /* Il dépasse largement par le haut de la carte */
+            top: -55%; 
             left: 50%;
             width: 240px;
             height: 240px;
-            transform: translateX(-50%) translateZ(-90px) scale(1.7); /* Reculé profondément en 3D et agrandi */
-            opacity: 0.15; /* Look hologramme/fantomatique discret de base */
+            transform: translateX(-50%) translateZ(-90px) scale(1.7);
+            opacity: 0.15; /* Hologramme discret */
             pointer-events: none;
             z-index: -1;
             transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
         }
         
-        /* Réveil du Titan au survol du joueur : il s'illumine et s'approche */
         .titan-holder:hover .titan-spectre {
             opacity: 0.45;
             transform: translateX(-50%) translateZ(-50px) scale(1.9);
+            filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.6)); /* Halo d'énergie */
         }
         
-        /* Forçage des néons au survol du Holder global */
         .titan-holder-1st:hover .pantheon-card { box-shadow: -20px 20px 50px rgba(255, 255, 0, 0.5), inset 0 0 30px rgba(255, 255, 0, 0.4) !important; border-color: #ffffff !important; }
         .titan-holder-2nd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(0, 255, 255, 0.5), inset 0 0 25px rgba(0, 255, 255, 0.4) !important; border-color: #ffffff !important; }
         .titan-holder-3rd:hover .pantheon-card { box-shadow: -15px 15px 40px rgba(255, 0, 255, 0.5), inset 0 0 25px rgba(255, 0, 255, 0.4) !important; border-color: #ffffff !important; }
@@ -965,9 +972,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥈</div>"
         
-        # Récupération et nettoyage du familier pour injection
+        # Application du Laser Anti-Fond ici !
         fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
         
         html_pantheon += f"""
         <div class='titan-holder titan-holder-2nd'>
@@ -989,8 +996,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>👑</div>"
         
+        # Application du Laser Anti-Fond ici !
         fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
         
         html_pantheon += f"""
         <div class='titan-holder titan-holder-1st'>
@@ -1012,8 +1020,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         av = u_data.get("avatar")
         img_tag = f"<img src='data:image/png;base64,{av}' class='pantheon-avatar'>" if av else "<div class='pantheon-empty-av'>🥉</div>"
         
+        # Application du Laser Anti-Fond ici !
         fam_svg = u_data.get("familier_svg", "")
-        titan_html = f"<div class='titan-spectre'>{fam_svg.replace('\n', ' ')}</div>" if fam_svg else ""
+        titan_html = f"<div class='titan-spectre'>{preparer_titan(fam_svg)}</div>" if fam_svg else ""
         
         html_pantheon += f"""
         <div class='titan-holder titan-holder-3rd'>
@@ -1043,6 +1052,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         joueur_complet = f"{img_html}{k} {''.join(v.get('badges', []))}"
         scores_data.append({"Joueur": joueur_complet, "Niveau": obtenir_rang(v["score"]), "Points": round(v["score"], 1)})
         
+    import pandas as pd
     df_scores = pd.DataFrame(scores_data)
     
     html_table = "<table class='hyper-table'><thead><tr><th>Joueur</th><th>Niveau</th><th>Points</th></tr></thead><tbody>"
@@ -1062,6 +1072,7 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             if mon_p:
                 pts = mon_p["credences"].get(q['resultat'], 0)
                 st.markdown(f"Tu avais parié : {pts}% | Points gagnés : +{pts}", unsafe_allow_html=True)
+                
 elif st.session_state.page_actuelle == "➕ Créer":
     st.subheader("POSER UNE QUESTION")
     titre = st.text_input("La question :", placeholder="Exemple : Thomas aura-t-il son permis avant juin ?")
