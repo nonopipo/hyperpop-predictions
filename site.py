@@ -1097,7 +1097,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     "Kamikaze (Gain +15% | Perte +10% en cas d'échec)",
                     "Prudent (Gain normal | Bouclier : Perte réduite de 15%)"
                 ]
-                style_joueur = st.selectbox("Alignement de l'Entité (Impacte vos paris) :", options_alignement)
+        style_joueur = st.selectbox("Alignement de l'Entité (Impacte vos paris) :", options_alignement)
     
         if st.button("Lancer la Séquence 🧬"):
             if brins_actuels < 50:
