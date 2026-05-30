@@ -1592,7 +1592,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                 <div class="lever-track"></div>
                 <div class="lever-handle" id="knob"></div>
             </div>
-            <div class="instruction" id="txt">TIRER ⬇️</div>
+            <div class="instruction" id="txt">TIRER (- 7 brins) ⬇️</div>
         </div>
         <script>
             const parentBtns = window.parent.document.querySelectorAll('button');
@@ -1620,7 +1620,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                         txt.innerText = 'SYNTHÈSE...';
                         txt.style.color = '#ff00ff';
                         parentBtns.forEach(b => { if(b.innerText.includes('EXEC_GACHA')) b.click(); });
-                        setTimeout(() => { knob.style.top = '10px'; currentY = 10; txt.innerText = 'TIRER ⬇️'; txt.style.color = '#00ffff'; }, 2000);
+                        setTimeout(() => { knob.style.top = '10px'; currentY = 10; txt.innerText = 'TIRER (- 7 brins) ⬇️'; txt.style.color = '#00ffff'; }, 2000);
                     }
                 }
                 currentY = y;
@@ -1698,7 +1698,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                 placeholder_gacha.empty()
                 
                 # Encaissement et Récompense
-                db["utilisateurs"][user]["brins_adn"] -= 5 
+                db["utilisateurs"][user]["brins_adn"] -= 7 
                 
                 if gain_type == "score": db["utilisateurs"][user]["score"] += 10
                 elif gain_type == "adn": db["utilisateurs"][user]["brins_adn"] += 50
