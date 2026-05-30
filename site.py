@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Transforme le SVG en curseur GÉANT avec éradication des flashs et ajout d'une aura."""
+    """Transforme le SVG en curseur GÉANT avec une VRAIE petite aura."""
     if not svg_code:
         return
 
@@ -35,29 +35,15 @@ def activer_curseur_symbiote(svg_code):
     svg_curseur = re.sub(r'<filter.*?</filter>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'filter="[^"]+"', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 3. ÉRADICATION DES GROS CLIGNOTEMENTS (La cause de ton bug)
-    # On supprime toutes les animations d'opacité/remplissage générées par l'IA qui cachent la vue
-    svg_curseur = re.sub(r'<animate[^>]*attributeName="(opacity|fill|stroke-opacity)"[^>]*/?>', '', svg_curseur, flags=re.IGNORECASE)
-    # On supprime les rectangles géants (largeur entre 100 et 200) que l'IA met parfois en fond
+    # 3. ÉRADICATION DES GROS CARRÉS DE FOND DE L'IA (On vire juste les backgrounds gênants)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*>.*?</rect>', '', svg_curseur, flags=re.IGNORECASE | re.DOTALL)
     svg_curseur = re.sub(r'<rect[^>]*width="(1[0-9]{2}|200)"[^>]*/>', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 4. INJECTION DE L'AURA (Les petits carrés qui clignotent autour)
-    particules_aura = """
-    <rect x="20" y="20" width="8" height="8" fill="#39ff14"><animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/></rect>
-    <rect x="170" y="40" width="6" height="6" fill="#00ffff"><animate attributeName="opacity" values="1;0;1" dur="1.5s" repeatCount="indefinite"/></rect>
-    <rect x="30" y="160" width="10" height="10" fill="#ff00ff"><animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/></rect>
-    <rect x="160" y="160" width="7" height="7" fill="#ffff00"><animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/></rect>
-    </svg>
-    """
-    # On ouvre la balise de fin </svg> pour y glisser nos particules
-    svg_curseur = re.sub(r'</svg>', particules_aura, svg_curseur, flags=re.IGNORECASE)
+    # 4. MUTATION TITANESQUE SÉCURISÉE (On ne change QUE la taille de la boîte principale, pas de l'intérieur !)
+    svg_curseur = re.sub(r'(<svg[^>]*?)width="[^"]*"', r'\g<1>width="112"', svg_curseur, count=1, flags=re.IGNORECASE)
+    svg_curseur = re.sub(r'(<svg[^>]*?)height="[^"]*"', r'\g<1>height="112"', svg_curseur, count=1, flags=re.IGNORECASE)
 
-    # 5. MUTATION TITANESQUE (112x112 : La limite de sécurité des Systèmes d'Exploitation)
-    svg_curseur = re.sub(r'width="\d+"', 'width="112"', svg_curseur)
-    svg_curseur = re.sub(r'height="\d+"', 'height="112"', svg_curseur)
-
-    # 6. Affinage Mathématique
+    # 5. Affinage Mathématique des traits du familier
     def affiner_trait(match):
         try:
             epaisseur = float(match.group(1))
@@ -67,11 +53,20 @@ def activer_curseur_symbiote(svg_code):
             
     svg_curseur = re.sub(r'stroke-width="([0-9.]+)"', affiner_trait, svg_curseur)
 
+    # 6. INJECTION DE L'AURA (Les vraies petites particules, insérées en dernier !)
+    particules_aura = """
+    <rect x="20" y="20" width="8" height="8" fill="#39ff14"><animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/></rect>
+    <rect x="170" y="40" width="6" height="6" fill="#00ffff"><animate attributeName="opacity" values="1;0;1" dur="1.5s" repeatCount="indefinite"/></rect>
+    <rect x="30" y="160" width="10" height="10" fill="#ff00ff"><animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/></rect>
+    <rect x="160" y="160" width="7" height="7" fill="#ffff00"><animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/></rect>
+    </svg>
+    """
+    svg_curseur = re.sub(r'</svg>', particules_aura, svg_curseur, flags=re.IGNORECASE)
+
     # 7. Encodage et Déploiement
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # Le '56 56' place la pointe du clic pile au centre du nouveau curseur géant
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
