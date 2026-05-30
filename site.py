@@ -385,84 +385,71 @@ import requests
 
 def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_theme):
     """
-    Envoie une requête à Gemini 1.5 Flash pour évoluer un familier SVG.
-    Version purifiée pour éviter les crashs de l'éditeur de code.
+    Fait appel à Gemini pour générer le Familier ET ses 3 attaques (Pierre, Feuille, Ciseaux).
+    Retourne une chaîne JSON structurée.
     """
-    # 1. Configuration de l'API
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    
-    # 2. On utilise Flash pour la vitesse
-    model = genai.GenerativeModel('gemini-flash-latest')
-    
-    # 3. Désactivation des filtres de sécurité
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    }
-    
-    # 4. Le Prompt Absolu
-    prompt = f"""
-    Tu es l'Architecte d'une matrice Cyberpunk. Dessine l'évolution d'un familier virtuel en code SVG pur.
-    AUCUN TEXTE AVANT OU APRÈS. UNIQUEMENT LA BALISE <svg> JUSQU'À </svg>.
-
-    CONTEXTE DE L'ÉVOLUTION : 
-    - Forme de base (À CONSERVER ET FAIRE ÉVOLUER) : {forme_actuelle}
-    - Demande de mutation du joueur : {requete} 
-    - Niveau de puissance : {niveau}
-    - Alignement/Style : {style}
-    - Dernier marché parié (Thème) : '{dernier_theme}'
-
-    RÈGLES STRICTES DE GÉNÉRATION (CRITIQUES) :
-    1. FORMAT : <svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">. Centré.
-    2. CONTINUITÉ : Ne crée pas une entité totalement différente de la forme de base.
-    3. PAS DE FILTRES : N'utilise AUCUN <filter>. Utilise des <radialGradient>.
-    4. ANIMATION TOTALE OBLIGATOIRE :
-       - Yeux : Clignement via <animate attributeName="ry" values="10;1;10" dur="4s" repeatCount="indefinite"/>.
-       - Bouche : Doit bouger ou mâcher.
-       - Membres : Doivent bouger via <animateTransform attributeName="transform" type="rotate" values="-10 100 100; 10 100 100; -10 100 100" dur="3s" repeatCount="indefinite"/>.
-    5. LE CLIN D'ŒIL : Intègre un petit objet représentant le thème '{dernier_theme}'.
-    """
-    
     try:
-        # 5. Appel à la Matrice
-        reponse = model.generate_content(prompt, safety_settings=safety_settings)
-        code_propre = reponse.text.strip()
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # 6. Nettoyage initial des balises markdown
-        if "```xml" in code_propre:
-            code_propre = code_propre.replace("```xml", "")
-        if "```html" in code_propre:
-            code_propre = code_propre.replace("```html", "")
-        if "```" in code_propre:
-            code_propre = code_propre.replace("```", "")
-            
-        code_propre = code_propre.strip()
+        prompt = f"""Tu es un Architecte Cyberpunk. Ta mission est de générer un familier virtuel ET ses 3 attaques uniques basées sur le principe du Pierre-Feuille-Ciseaux.
+        - État actuel : {forme_actuelle}
+        - Demande de mutation du joueur : {requete}
+        - Alignement : {style}
+        - Thème récent : {dernier_theme}
         
-        # 7. Extraction Chirurgicale
-        match = re.search(r'(<svg.*?</svg>)', code_propre, re.DOTALL | re.IGNORECASE)
-        if match:
-            code_propre = match.group(1)
-        else:
-            if "<svg" in code_propre:
-                code_propre = code_propre[code_propre.find("<svg"):]
-                if "</svg>" not in code_propre:
-                    code_propre += "\n</svg>"
-            else:
-                code_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">{code_propre}</svg>'
-                
-        return code_propre
+        RÈGLES DU PIERRE-FEUILLE-CISEAUX :
+        1. PIERRE : Représente la Défense, le Poids, la Terre, le Bouclier, ou un projectile lourd.
+        2. FEUILLE : Représente la Magie, l'Énergie de Zone, le Vent, l'Enveloppement.
+        3. CISEAUX : Représente la Vitesse, le Tranchant, les Lames, les Griffes.
+
+        CONTRAINTES SVG :
+        - Tous les SVGs doivent faire exactement viewBox="0 0 200 200" width="100%" height="100%".
+        - NE METS AUCUN FOND (pas de rect de fond, transparence totale).
+        - Les overlays d'attaque (pierre, feuille, ciseaux) ne doivent contenir QUE l'effet visuel de l'attaque, ils seront superposés sur le familier.
+        - Utilise des animations SMIL (<animate>) dans les overlays pour donner de l'impact (ex: des griffes qui apparaissent, un bouclier qui pulse).
+
+        RÉPONSE ATTENDUE : UNIQUEMENT UN OBJET JSON STRICT. AUCUN TEXTE AVANT NI APRÈS.
+        Format JSON requis :
+        {{
+            "svg_base": "<svg ...> ... le corps du familier ... </svg>",
+            "attaques": {{
+                "pierre": {{
+                    "nom": "Nom stylé de l'attaque défensive",
+                    "svg_overlay": "<svg ...> ... effet bouclier/lourd ... </svg>"
+                }},
+                "feuille": {{
+                    "nom": "Nom stylé de l'attaque de zone",
+                    "svg_overlay": "<svg ...> ... effet onde/énergie ... </svg>"
+                }},
+                "ciseaux": {{
+                    "nom": "Nom stylé de l'attaque tranchante",
+                    "svg_overlay": "<svg ...> ... effet griffes/lames ... </svg>"
+                }}
+            }}
+        }}
+        """
+        
+        reponse = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+            ),
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+        )
+        
+        # Nettoyage pour s'assurer qu'on a bien que le JSON
+        texte_brut = reponse.text.strip()
+        texte_brut = texte_brut.replace("```json", "").replace("```", "").strip()
+        
+        return texte_brut
         
     except Exception as e:
-        # Renvoi d'un SVG de secours (Triple apostrophes utilisées ici pour sauver ton éditeur de code)
-        return f'''<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="200" height="200" fill="#090014"/>
-            <text x="100" y="100" fill="#ff0055" font-family="Courier New" font-size="20" font-weight="bold" text-anchor="middle">API DOWN</text>
-            <circle cx="100" cy="120" r="10" fill="#ffff00">
-                <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
-            </circle>
-        </svg>'''
+        return f'{{"erreur": "{str(e)}"}}'
 
 
 def charger_joueurs():
