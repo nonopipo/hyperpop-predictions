@@ -19,7 +19,7 @@ st.set_page_config(page_title="Prédictions", page_icon="🔮", layout="centered
 
 
 def activer_curseur_symbiote(svg_code):
-    """Version originale et stable : aucun risque de corruption du code."""
+    """Version stable 64x64 avec éradication du fond noir (Transparence)."""
     if not svg_code:
         return
 
@@ -27,31 +27,36 @@ def activer_curseur_symbiote(svg_code):
     import re
     import streamlit as st
 
-    # 1. Le Nettoyage de base (Celui qui marchait dès le début)
+    # 1. Nettoyage de base
     svg_curseur = re.sub(r'', '', svg_code, flags=re.DOTALL)
     svg_curseur = svg_curseur.replace("\n", " ").replace("```xml", "").replace("```", "").strip()
 
-    # 2. Assurance-vie : on vérifie que la balise <svg> est bien là
+    # 2. Assurance-vie (Vérification de la balise)
     if not svg_curseur.lower().startswith("<svg"):
         svg_curseur = f'<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">{svg_curseur}</svg>'
 
-    # 3. Miniaturisation SÉCURISÉE (Taille 48x48, parfait équilibre)
-    # On remplace uniquement la largeur et la hauteur sans toucher au reste du dessin !
-    svg_curseur = re.sub(r'width="[^"]*"', 'width="48"', svg_curseur, count=1, flags=re.IGNORECASE)
-    svg_curseur = re.sub(r'height="[^"]*"', 'height="48"', svg_curseur, count=1, flags=re.IGNORECASE)
+    # 3. LE LASER ANTI-FOND (Rend le monstre transparent)
+    # L'IA génère souvent un rectangle de 200x200 ou 100% en fond. On le détruit.
+    # On vérifie les deux sens (width d'abord, ou height d'abord) pour être sûr de l'avoir !
+    svg_curseur = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_curseur, flags=re.IGNORECASE)
+    svg_curseur = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_curseur, flags=re.IGNORECASE)
 
-    # 4. Encodage en Base64 et Injection
+    # 4. Mutation de Taille (64x64 - Gros mais 100% sécurisé)
+    svg_curseur = re.sub(r'width="[^"]*"', 'width="64"', svg_curseur, count=1, flags=re.IGNORECASE)
+    svg_curseur = re.sub(r'height="[^"]*"', 'height="64"', svg_curseur, count=1, flags=re.IGNORECASE)
+
+    # 5. Encodage et Injection
     try:
         b64_svg = base64.b64encode(svg_curseur.encode('utf-8')).decode('utf-8')
         
-        # Le '24 24' place la zone de clic au centre (la moitié de 48)
+        # Le '32 32' place la zone de clic parfaitement au centre du monstre de 64 pixels
         css_curseur = f"""
         <style>
             html, body, [class*="st-"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, auto !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, auto !important;
             }}
             button, a, input, [role="button"] {{
-                cursor: url('data:image/svg+xml;base64,{b64_svg}') 24 24, pointer !important;
+                cursor: url('data:image/svg+xml;base64,{b64_svg}') 32 32, pointer !important;
             }}
         </style>
         """
