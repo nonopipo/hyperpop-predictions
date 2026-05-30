@@ -1053,7 +1053,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
         
         if st.button("Lancer la Séquence 🧬"):
             if brins_actuels < 50:
-                st.error(Brins d'ADN insuffisants. L'incubation demande plus de matière.")
+                st.error("Brins d'ADN insuffisants. L'incubation demande plus de matière.")
             elif len(nouvelle_requete) < 5:
                 st.warning("Soyez plus précis dans votre demande de mutation.")
             else:
