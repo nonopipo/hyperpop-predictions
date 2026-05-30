@@ -483,9 +483,10 @@ def init_db(joueurs_autorises):
 # MAJ Structure Utilisateurs (avec support Avatar et Brins ADN)
     for nom in joueurs_autorises.keys():
         if nom not in db["utilisateurs"]:
-            db["utilisateurs"][nom] = {"score": 0, "brins_adn": 0, "historique_vu": [], "badges": [], "gains_historique": [], "avatar": None}
+            db["utilisateurs"][nom] = {"score": 0, "brins_adn": 0, "classe_familier": "Équilibré", "historique_vu": [], "badges": [], "gains_historique": [], "avatar": None}
             modifie = True
         else:
+            if "classe_familier" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["classe_familier"] = "Équilibré"; modifie = True
             if "brins_adn" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["brins_adn"] = 0; modifie = True
             if "badges" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["badges"] = []; modifie = True
             if "gains_historique" not in db["utilisateurs"][nom]: db["utilisateurs"][nom]["gains_historique"] = []; modifie = True
@@ -509,6 +510,26 @@ def obtenir_rang(score):
     elif score < 600: return "Expert ⚡"
     else: return "Oracle 🌐"
 
+def calculer_bilan_pari(base_win, classe):
+    """
+    Calcule le gain, la perte et le net en fonction de la classe du familier.
+    base_win : les points mis sur la bonne réponse (ex: 80)
+    base_loss : les points mis sur les mauvaises réponses (ex: 20)
+    """
+    base_loss = 100 - base_win
+    
+    if "Kamikaze" in classe:
+        gain = base_win * 1.15  # +15% de bonus de gain
+        perte = base_loss * 1.10 # 10% de malus (on perd plus)
+    elif "Prudent" in classe:
+        gain = base_win * 1.00   # Gain normal
+        perte = base_loss * 0.85 # Bouclier : on réduit la perte de 15%
+    else: # Équilibré (ou joueur sans familier)
+        gain = base_win
+        perte = base_loss
+        
+    net = round(gain - perte, 1)
+    return gain, perte, net
 
 # ==========================================
 # 2. ÉCRAN DE CONNEXION
@@ -568,21 +589,38 @@ if st.session_state.get("check_recompenses", False):
             html_recompense += f"<p class='zoom-pop-text delay-1' style='font-size: 1.2rem;'>La Vérité absolue : <b style='color:#39ff14;'>{q_en_cours['resultat']}</b></p>"
             
             if pari_associe:
-                points_gagnes = pari_associe["credences"].get(q_en_cours["resultat"], 0)
-                html_recompense += "<div class='zoom-pop-text delay-2'>"
-                html_recompense += f"<p style='color:#ffff00; font-weight:bold;'>Ta crédence : {points_gagnes}%</p>"
+                classe = db["utilisateurs"][user].get("classe_familier", "Équilibré")
+                base_win = pari_associe["credences"].get(q_en_cours["resultat"], 0)
                 
-                masque_restant = 100 - points_gagnes
+                # Calcul exact via le moteur central
+                gain, perte, net_pts = calculer_bilan_pari(base_win, classe)
+                
+                html_recompense += "<div class='zoom-pop-text delay-2'>"
+                html_recompense += f"<p style='color:#ffff00; font-weight:bold;'>Ta crédence : {base_win}%</p>"
+                html_recompense += f"<p style='color:#00ffff; font-size: 0.9rem;'>Alignement Actif : {classe}</p>"
+                
+                masque_restant = 100 - base_win
                 html_recompense += f"<style> @keyframes fluide-{q_en_cours['id']} {{ 0% {{ width: 100%; }} 100% {{ width: {masque_restant}%; }} }} </style>"
                 html_recompense += f"<div class='xp-bar-container'><div class='xp-bar-overlay' style='animation: fluide-{q_en_cours['id']} 4.5s linear forwards;'><div class='sparks-front'></div></div></div>"
-                
                 html_recompense += "</div>"
-                html_recompense += f"<h2 class='zoom-pop-text delay-3'>GAIN : +{points_gagnes} POINTS</h2>"
                 
-                if points_gagnes < 20: html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>HONTES ET SANCTIONS.</h3><p class='zoom-pop-text delay-3'>Ton intuition a échoué.</p>"
-                elif points_gagnes <= 50: html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-fade'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff00ff !important; text-shadow:none;'>C'est tiède... au moins tu as été humble.</h3><p class='zoom-pop-text delay-3'>Tu as limité la casse grâce à ton incertitude.</p>"
-                elif points_gagnes <= 80: html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-glow'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#00ffff !important; text-shadow:none;'>Bien joué ! Tu as une bonne intuition !</h3><p class='zoom-pop-text delay-3'>La boule rayonne de puissance.</p>"
-                else: html_recompense += "<div class='zoom-pop-text delay-3'><div class='third-eye-psy'>👁️⚙️⚡</div></div><h2 class='zoom-pop-text delay-3' style='color:#ffff00 !important; text-shadow: 0 0 20px #ff00ff;'>✨ DOPAMINE MAX !!! ✨</h2><h3 class='zoom-pop-text delay-3' style='color:#39ff14 !important;'>TROISIÈME ŒIL ÉVEILLÉ !</h3>"
+                # AFFICHAGE DU NET (Gain ou Perte)
+                if net_pts > 0:
+                    html_recompense += f"<h2 class='zoom-pop-text delay-3'>BILAN NET : +{net_pts} PTS</h2>"
+                else:
+                    html_recompense += f"<h2 class='zoom-pop-text delay-3' style='color:#ff0055;'>BILAN NET : {net_pts} PTS</h2>"
+                
+                # L'ANIMATION EN FONCTION DU RÉSULTAT
+                if net_pts < 0: 
+                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION MATRICIELLE.</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
+                elif net_pts == 0: 
+                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-fade'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#aaaaaa !important; text-shadow:none;'>Pari Blanc.</h3><p class='zoom-pop-text delay-3'>Tu n'as rien gagné, rien perdu.</p>"
+                elif net_pts <= 40: 
+                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-glow'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#00ffff !important; text-shadow:none;'>Bénéfice Mineur.</h3><p class='zoom-pop-text delay-3'>Ton intuition te rapporte quelques points.</p>"
+                else: 
+                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='third-eye-psy'>👁️⚙️⚡</div></div><h2 class='zoom-pop-text delay-3' style='color:#ffff00 !important; text-shadow: 0 0 20px #ff00ff;'>✨ DOPAMINE MAX !!! ✨</h2><h3 class='zoom-pop-text delay-3' style='color:#39ff14 !important;'>ASCENSION VALIDÉE !</h3>"
+                
+                points_gagnes_animation = net_pts # Pour la variable de session
             else:
                 points_gagnes = 0
                 html_recompense += "<div class='zoom-pop-text delay-2'><p>Tu n'avais pas enregistré de vision sur ce marché.</p><h2 style='color:#ff0055;'>GAIN : 0 POINTS</h2></div>"
@@ -689,23 +727,28 @@ def cloturer_et_distribuer_badges(q_id, opt_gagnante):
         if q_db["id"] == q_id:
             q_db["statut"], q_db["resultat"] = "clos", opt_gagnante
     
-    for p in [p for p in db["paris"] if p["id_question"] == q_id]:
-        pts = p["credences"].get(opt_gagnante, 0)
+for p in [p for p in db["paris"] if p["id_question"] == q_id]:
         joueur = p["joueur"]
-        db["utilisateurs"][joueur]["score"] += pts
-        db["utilisateurs"][joueur]["brins_adn"] = db["utilisateurs"][joueur].get("brins_adn", 0) + pts
+        classe = db["utilisateurs"][joueur].get("classe_familier", "Équilibré")
+        base_win = p["credences"].get(opt_gagnante, 0)
         
-        # 1. Data Viz : Sauvegarde dans l'historique
-        db["utilisateurs"][joueur].setdefault("gains_historique", []).append(pts)
+        # 1. On appelle le nouveau moteur mathématique
+        _, _, net_pts = calculer_bilan_pari(base_win, classe)
         
-        # 2. Succès / Badges
+        # 2. On applique les conséquences (Score et Brins d'ADN)
+        db["utilisateurs"][joueur]["score"] += net_pts
+        nouveau_brins = db["utilisateurs"][joueur].get("brins_adn", 0) + net_pts
+        db["utilisateurs"][joueur]["brins_adn"] = max(0, nouveau_brins) # Les brins ne tombent pas sous zéro
+        
+        # 3. Data Viz : Sauvegarde dans l'historique (on sauvegarde le gain net)
+        db["utilisateurs"][joueur].setdefault("gains_historique", []).append(net_pts)
+        
+        # 4. Succès / Badges
         badges = db["utilisateurs"][joueur].setdefault("badges", [])
-        # Sniper : 100% de réussite
-        if pts == 100 and "🎯" not in badges: badges.append("🎯")
-        # Kamikaze : 100% sur un choix perdant
-        if pts == 0 and any(v == 100 for v in p["credences"].values()) and "💀" not in badges: badges.append("💀")
-        # Renard : Au moins 5 paris terminés
+        if base_win == 100 and "🎯" not in badges: badges.append("🎯")
+        if base_win == 0 and any(v == 100 for v in p["credences"].values()) and "💀" not in badges: badges.append("💀")
         if len(db["utilisateurs"][joueur]["gains_historique"]) >= 5 and "🦊" not in badges: badges.append("🦊")
+        
     save_data(db)
 
 if st.session_state.page_actuelle == "🔮 Marchés Actifs":
@@ -1071,6 +1114,8 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                         db["utilisateurs"][user]["brins_adn"] -= 50 # On débite 50 points
                         db["utilisateurs"][user]["familier_svg"] = nouveau_svg
                         db["utilisateurs"][user]["familier_desc"] = nouvelle_requete # On sauvegarde pour la prochaine mutation
+                        db["utilisateurs"][user]["classe_familier"] = style_joueur
+
                         
                         # 3. Sauvegarde sur GitHub (ta vraie fonction)
                         save_data(db)
