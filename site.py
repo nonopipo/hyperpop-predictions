@@ -1666,32 +1666,18 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     sub_msg = "BADGE 🎰 DÉBLOQUÉ !"
                     gain_type = "badge"
 
-                # 4. L'ANIMATION GENSHIN BLINDÉE (Son synchronisé via image fantôme)
+                # 4. L'ANIMATION GENSHIN (Pure CSS : 0 bug, texte centré garanti)
                 placeholder_gacha = st.empty()
                 
-                try:
-                    import base64
-                    with open("validation.mp3", "rb") as f:
-                        b64_audio = base64.b64encode(f.read()).decode()
-                        # LE HACK ABSOLU : L'image déclenche une erreur qui lance le Javascript au bout de 1.1s !
-                        lecteur_audio_retarde = f"""
-                        <audio id="gacha-boom">
-                            <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
-                        </audio>
-                        <img src="x" onerror="setTimeout(() => {{ var a = document.getElementById('gacha-boom'); if(a) a.play(); }}, 1100);" style="display:none;">
-                        """
-                except:
-                    lecteur_audio_retarde = ""
-
                 html_gacha = f"""
                 <style>
                     .gacha-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,0,16,0.98); z-index: 999999; display: flex; justify-content: center; align-items: center; overflow: hidden; }}
                     .gacha-star-head {{ position: absolute; top: -20%; left: -20%; width: 50px; height: 50px; background: white; border-radius: 50%; box-shadow: 0 0 50px 20px white, inset 0 0 20px #00ffff; animation: shooting-star 2s cubic-bezier(0.4, 0, 0.2, 1) forwards; z-index: 10; }}
                     .gacha-star-head::after {{ content: ''; position: absolute; top: 50%; right: 50%; width: 800px; height: 15px; background: linear-gradient(to left, white, rgba(255,255,255,0.4), transparent); transform: translateY(-50%) rotate(45deg); transform-origin: right center; border-radius: 10px; filter: drop-shadow(0 0 20px white); z-index: -1; }}
                     @keyframes shooting-star {{ 0% {{ top: -20%; left: -20%; filter: drop-shadow(0 0 20px white); }} 50% {{ top: 50%; left: 50%; filter: drop-shadow(0 0 80px {couleur}); background: {couleur}; box-shadow: 0 0 40px 20px {couleur}; }} 60% {{ top: 50%; left: 50%; transform: scale(0); opacity: 0; }} 100% {{ top: 50%; left: 50%; transform: scale(0); opacity: 0; }} }}
-                    .gacha-flash {{ position: absolute; width: 10px; height: 10px; background: {couleur}; border-radius: 50%; opacity: 0; animation: gacha-bang 3s ease-out 1.1s forwards; box-shadow: 0 0 200px 100px {couleur}; }}
+                    .gacha-flash {{ position: absolute; width: 10px; height: 10px; background: {couleur}; border-radius: 50%; opacity: 0; animation: gacha-bang 3s ease-out 1.1s forwards; box-shadow: 0 0 200px 100px {couleur}; z-index: 15; }}
                     @keyframes gacha-bang {{ 0% {{ opacity:0; transform:scale(0); }} 10% {{ opacity:1; transform:scale(80); background: white; }} 30% {{ opacity:0.8; background: {couleur}; transform:scale(150); }} 100% {{ opacity:0; transform:scale(200); }} }}
-                    .gacha-result {{ opacity: 0; color: white; font-family: 'Arial Black', sans-serif; font-size: 5rem; text-align: center; text-transform: uppercase; animation: show-result 2s cubic-bezier(0.1, 0.9, 0.2, 1) 1.2s forwards; text-shadow: 0 0 30px {couleur}, 0 0 60px {couleur}; z-index: 10; }}
+                    .gacha-result {{ position: absolute; opacity: 0; color: white; font-family: 'Arial Black', sans-serif; font-size: 5rem; text-align: center; text-transform: uppercase; animation: show-result 2s cubic-bezier(0.1, 0.9, 0.2, 1) 1.2s forwards; text-shadow: 0 0 30px {couleur}, 0 0 60px {couleur}; z-index: 20; }}
                     @keyframes show-result {{ 0% {{ opacity:0; transform: scale(0.5); }} 20% {{ opacity:1; transform: scale(1.1); }} 100% {{ opacity:1; transform: scale(1); }} }}
                     .gacha-strobe {{ position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; animation: strobe 0.2s 4 1.0s; z-index: 5; }}
                     @keyframes strobe {{ 0%, 100% {{ opacity: 0; }} 50% {{ opacity: 0.6; }} }}
@@ -1701,15 +1687,14 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                     <div class="gacha-star-head"></div>
                     <div class="gacha-flash"></div>
                     <div class="gacha-result">{msg}<br><span style="font-size: 2.5rem; color: #fff; text-shadow: 0 0 20px {couleur};">{sub_msg}</span></div>
-                    {lecteur_audio_retarde}
                 </div>
                 """
                 
-                # Plus besoin de jouer_son_invisible() ici, le "img onerror" s'en occupe
+                # Injection purifiée
                 placeholder_gacha.markdown(html_gacha, unsafe_allow_html=True)
                 
                 import time
-                time.sleep(4.5)
+                time.sleep(6) # ⏳ Temps allongé à 6 secondes (tu as 4.5s pures pour lire le résultat !)
                 placeholder_gacha.empty()
                 
                 # Encaissement et Récompense
