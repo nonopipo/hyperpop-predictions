@@ -1221,6 +1221,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         
     html_bestiaire += "</div>"
     st.markdown(html_bestiaire, unsafe_allow_html=True)
+        
+    html_bestiaire += "</div>"
+    st.markdown(html_bestiaire, unsafe_allow_html=True)
     
     # 4. Historique classique des anciens marchés clos
     st.write("<br><br>", unsafe_allow_html=True)
