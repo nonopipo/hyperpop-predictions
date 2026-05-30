@@ -344,7 +344,7 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style):
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
     # 2. On utilise le modèle le plus rapide et gratuit
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    model = genai.GenerativeModel('gemini-flash-latest')
     
     # 3. Le Prompt Absolu (celui qu'on a perfectionné ensemble)
     prompt = f"""
