@@ -604,7 +604,6 @@ if st.session_state.get("check_recompenses", False):
     historique_vu = db["utilisateurs"][user]["historique_vu"]
     marches_clos_non_vus = [q for q in db["questions"] if q["statut"] == "clos" and q["id"] not in historique_vu]
     
-    # --- NOUVEAU : LE FILTRE NINJA (Cible uniquement les paris du joueur) ---
     marches_a_afficher = []
     modifications_silencieuses = False
     
@@ -613,18 +612,36 @@ if st.session_state.get("check_recompenses", False):
         if pari:
             marches_a_afficher.append((q, pari))
         else:
-            # Ajout silencieux à l'historique : le joueur ne sera pas spammé
             db["utilisateurs"][user]["historique_vu"].append(q["id"])
             modifications_silencieuses = True
             
     if modifications_silencieuses:
-        save_data(db) # On sauvegarde instantanément les marchés ignorés
-    # ------------------------------------------------------------------------
+        save_data(db) 
     
-    # S'il reste des marchés sur lesquels le joueur a parié, on lance la machine à dopamine
     if marches_a_afficher:
         q_en_cours, pari_associe = marches_a_afficher[0]
         
+        # ---------------------------------------------------------
+        # NOUVEAU : SI C'EST UN COMBAT, ON JOUE LE REPLAY AVANT !
+        # ---------------------------------------------------------
+        if q_en_cours.get("type") == "combat" and not st.session_state.get(f"replay_{q_en_cours['id']}"):
+            st.markdown(f"<h2 style='text-align:center; color:#ff00ff; text-shadow:0 0 15px #ff00ff;'>⚔️ REPLAY DU COMBAT : {q_en_cours['titre']} ⚔️</h2>", unsafe_allow_html=True)
+            
+            import streamlit.components.v1 as components
+            import json
+            
+            # Injection sécurisée de l'animation stockée
+            html_arena = q_en_cours.get("html_combat", "<div style='color:white;'>Erreur de chargement de l'arène.</div>")
+            components.html(html_arena, height=450)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("VOIR LES RÉSULTATS DU PARI 🚀", use_container_width=True):
+                st.session_state[f"replay_{q_en_cours['id']}"] = True
+                st.rerun()
+            st.stop()
+        # ---------------------------------------------------------
+        
+        # LA SUITE CLASSIQUE (Popup de gains)
         st.markdown(f"<h2 style='text-align:center;'>🚨 RÉSULTAT REÇU ! 🚨</h2>", unsafe_allow_html=True)
         
         with st.container():
@@ -637,7 +654,6 @@ if st.session_state.get("check_recompenses", False):
             classe = db["utilisateurs"][user].get("classe_familier", "Équilibré")
             base_win = pari_associe["credences"].get(q_en_cours["resultat"], 0)
             
-            # Calcul exact via le moteur central
             gain, perte, net_pts = calculer_bilan_pari(base_win, classe)
             
             html_recompense += "<div class='zoom-pop-text delay-2'>"
@@ -649,13 +665,11 @@ if st.session_state.get("check_recompenses", False):
             html_recompense += f"<div class='xp-bar-container'><div class='xp-bar-overlay' style='animation: fluide-{q_en_cours['id']} 4.5s linear forwards;'><div class='sparks-front'></div></div></div>"
             html_recompense += "</div>"
             
-            # AFFICHAGE DU NET (Gain ou Perte)
             if net_pts > 0:
                 html_recompense += f"<h2 class='zoom-pop-text delay-3'>BILAN NET : +{net_pts} PTS</h2>"
             else:
                 html_recompense += f"<h2 class='zoom-pop-text delay-3' style='color:#ff0055;'>BILAN NET : {net_pts} PTS</h2>"
             
-            # L'ANIMATION EN FONCTION DU RÉSULTAT
             if net_pts < 0: 
                 html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION .</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
             elif net_pts == 0: 
@@ -665,13 +679,11 @@ if st.session_state.get("check_recompenses", False):
             else: 
                 html_recompense += "<div class='zoom-pop-text delay-3'><div class='third-eye-psy'>👁️⚙️⚡</div></div><h2 class='zoom-pop-text delay-3' style='color:#ffff00 !important; text-shadow: 0 0 20px #ff00ff;'>✨ DOPAMINE MAX !!! ✨</h2><h3 class='zoom-pop-text delay-3' style='color:#39ff14 !important;'>ASCENSION VALIDÉE !</h3>"
             
-            points_gagnes_animation = net_pts # Stockage pour la récolte finale
-            
+            points_gagnes_animation = net_pts 
             html_recompense += f"</div></{balise_unique}>" 
             
             st.markdown(html_recompense, unsafe_allow_html=True)
             
-            # BOUTON DE COLLECTE
             if st.button("COLLECTER ET CONTINUER 🚀"):
                 db["utilisateurs"][user]["historique_vu"].append(q_en_cours["id"])
                 save_data(db)
@@ -679,9 +691,8 @@ if st.session_state.get("check_recompenses", False):
                     st.session_state.points_volants = points_gagnes_animation
                 rafraichir()
                 
-        st.stop() # Bloque l'UI tant que le joueur n'a pas cliqué sur Collecter
+        st.stop()
     else:
-        # Plus aucun marché pertinent à afficher
         st.session_state.check_recompenses = False
 
 # ==========================================
@@ -1752,9 +1763,10 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
     import base64
     import random
     import re
+    import time
     import streamlit.components.v1 as components
 
-    st.subheader("⚔️ L'ARÈNE DES SYMBIOTES (JcJ)")
+    st.subheader("⚔️ L'ARÈNE DES SYMBIOTES (JcJ & Paris)")
     
     u_data = db["utilisateurs"].get(user, {})
     attaques_p1 = u_data.get("attaques")
@@ -1763,94 +1775,8 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
         st.warning("⚠️ Votre entité n'a pas encore de capacités de combat. Allez muter dans la Clinique Cybernétique !")
         st.stop()
         
-    # ==========================================
-    # 1. GESTION DU DECK DE DÉFENSE (Hors-Ligne)
-    # ==========================================
-    st.markdown("### 🛡️ Matrice de Défense (Hors-ligne)")
-    st.write("Séquence automatique utilisée si un autre joueur vous attaque pendant votre absence.")
-    
-    deck_actuel = u_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
-    
-    col1, col2, col3 = st.columns(3)
-    choix = {
-        "pierre": f"🪨 {attaques_p1.get('pierre', {}).get('nom', 'Blocage')}", 
-        "feuille": f"🍃 {attaques_p1.get('feuille', {}).get('nom', 'Zone')}", 
-        "ciseaux": f"✂️ {attaques_p1.get('ciseaux', {}).get('nom', 'Lame')}"
-    }
-             
-    nouveau_deck = []
-    with col1: nouveau_deck.append(st.selectbox("Tour 1", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[0]), format_func=lambda x: choix[x], key="def1"))
-    with col2: nouveau_deck.append(st.selectbox("Tour 2", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[1]), format_func=lambda x: choix[x], key="def2"))
-    with col3: nouveau_deck.append(st.selectbox("Tour 3", ["pierre", "feuille", "ciseaux"], index=["pierre", "feuille", "ciseaux"].index(deck_actuel[2]), format_func=lambda x: choix[x], key="def3"))
-    
-    if nouveau_deck != deck_actuel:
-        db["utilisateurs"][user]["deck_combat"] = nouveau_deck
-        save_data(db)
-        st.success("Matrice de défense mise à jour ! La sauvegarde est active.")
-        
-    st.markdown("---")
-    st.markdown("### ⚔️ Lancer un Assaut")
-    
-    # ==========================================
-    # 2. MATCHMAKING ET DECK D'ATTAQUE
-    # ==========================================
-    adversaires_valides = [k for k, v in db["utilisateurs"].items() if k != user and "attaques" in v]
-    
-    if not adversaires_valides:
-        st.info("Aucun autre joueur n'a encore muté son familier. Entraînez-vous en attendant !")
-        st.stop()
-        
-    adv_nom = st.selectbox("Cible de l'assaut :", adversaires_valides)
-    adv_data = db["utilisateurs"][adv_nom]
-    attaques_p2 = adv_data.get("attaques", {})
-    
-    # FIX ANTI-ÉGALITÉ : Si l'adversaire a le deck de base, on le mélange pour éviter les 3 égalités bêtes
-    deck_p2 = adv_data.get("deck_combat", ["pierre", "feuille", "ciseaux"])
-    if "deck_combat" not in adv_data:
-        random.shuffle(deck_p2) 
-    
-    st.write(f"Saisissez votre séquence d'attaque contre l'IA de **{adv_nom}** :")
-    colA, colB, colC = st.columns(3)
-    deck_attaque = []
-    with colA: deck_attaque.append(st.selectbox("Atk Tour 1", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk1"))
-    with colB: deck_attaque.append(st.selectbox("Atk Tour 2", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk2"))
-    with colC: deck_attaque.append(st.selectbox("Atk Tour 3", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="atk3"))
-    
-    if st.button("⚡ DÉMARRER L'AFFRONTEMENT ⚡", use_container_width=True):
-        
-        # ==========================================
-        # 3. LE MOTEUR LOGIQUE (Génération du combat)
-        # ==========================================
-        victoires = {"pierre": "ciseaux", "feuille": "pierre", "ciseaux": "feuille"}
-        script_combat = []
-        
-        for i in range(3):
-            coup1 = deck_attaque[i]
-            coup2 = deck_p2[i]
-            
-            nom_atk1 = attaques_p1.get(coup1, {}).get("nom", coup1).upper()
-            nom_atk2 = attaques_p2.get(coup2, {}).get("nom", coup2).upper()
-            
-            if coup1 == coup2:
-                vainqueur = 0
-                texte = f"CHOC ! [{nom_atk1}] annule [{nom_atk2}] !"
-            elif victoires[coup1] == coup2:
-                vainqueur = 1
-                texte = f"BIM ! [{nom_atk1}] détruit [{nom_atk2}] !"
-            else:
-                vainqueur = 2
-                texte = f"AÏE ! [{nom_atk2}] écrase [{nom_atk1}] !"
-                
-            script_combat.append({
-                "tour": i+1, "p1_move": coup1, "p2_move": coup2, 
-                "winner": vainqueur, "texte": texte
-            })
-            
-        script_json = json.dumps(script_combat)
-
-        # ==========================================
-        # 4. LE TRAITEMENT DES IMAGES
-        # ==========================================
+    # --- Fonction utilitaire pour générer le code HTML de l'Arène ---
+    def generer_html_combat(nom_p1, nom_p2, data_p1, data_p2, script_combat):
         def get_b64(svg_str):
             if not svg_str: return ""
             s = re.sub(r'', '', svg_str, flags=re.DOTALL)
@@ -1860,221 +1786,218 @@ elif st.session_state.page_actuelle == "⚔️ Arène":
             s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
             s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
             s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
-            s = s.replace('\n', ' ').strip()
-            return "data:image/svg+xml;base64," + base64.b64encode(s.encode('utf-8')).decode('utf-8')
+            return "data:image/svg+xml;base64," + base64.b64encode(s.replace('\n', ' ').strip().encode('utf-8')).decode('utf-8')
 
-        b1_base = get_b64(u_data.get("familier_svg"))
-        b1_p = get_b64(attaques_p1.get("pierre", {}).get("svg_overlay"))
-        b1_f = get_b64(attaques_p1.get("feuille", {}).get("svg_overlay"))
-        b1_c = get_b64(attaques_p1.get("ciseaux", {}).get("svg_overlay"))
+        b1_base, b1_p, b1_f, b1_c = get_b64(data_p1.get("familier_svg")), get_b64(data_p1.get("attaques", {}).get("pierre", {}).get("svg_overlay")), get_b64(data_p1.get("attaques", {}).get("feuille", {}).get("svg_overlay")), get_b64(data_p1.get("attaques", {}).get("ciseaux", {}).get("svg_overlay"))
+        b2_base, b2_p, b2_f, b2_c = get_b64(data_p2.get("familier_svg")), get_b64(data_p2.get("attaques", {}).get("pierre", {}).get("svg_overlay")), get_b64(data_p2.get("attaques", {}).get("feuille", {}).get("svg_overlay")), get_b64(data_p2.get("attaques", {}).get("ciseaux", {}).get("svg_overlay"))
         
-        b2_base = get_b64(adv_data.get("familier_svg"))
-        b2_p = get_b64(attaques_p2.get("pierre", {}).get("svg_overlay"))
-        b2_f = get_b64(attaques_p2.get("feuille", {}).get("svg_overlay"))
-        b2_c = get_b64(attaques_p2.get("ciseaux", {}).get("svg_overlay"))
-
-        # ==========================================
-        # 5. LE MOTEUR DE RENDU (RONDS DE TIRS AU BUT)
-        # ==========================================
-        html_arena = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <style>
+        script_json = json.dumps(script_combat)
+        return f"""
+        <!DOCTYPE html><html><head><style>
             @import url('[https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap)');
             body {{ margin: 0; padding: 0; background-color: #050010; color: white; font-family: 'Courier Prime', monospace; overflow: hidden; }}
-            
-            .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; box-sizing: border-box; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
+            .arena-container {{ position: relative; width: 100vw; height: 450px; background: radial-gradient(circle at center, #1a0033 0%, #000 100%); border: 3px solid #ff00ff; overflow: hidden; box-shadow: inset 0 0 50px rgba(255,0,255,0.2); }}
             .grid {{ position: absolute; width: 100%; height: 100%; background-image: linear-gradient(rgba(0,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: perspective(500px) rotateX(60deg); transform-origin: bottom; opacity: 0.5; bottom: -20%; }}
-            
-            /* LES RONDS (TIRS AU BUT) */
             .hud {{ position: absolute; top: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 10; }}
-            .hp-box {{ width: auto; background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 10px 20px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
+            .hp-box {{ background: rgba(0,0,0,0.8); border: 2px solid #00ffff; padding: 10px 20px; border-radius: 5px; box-shadow: 0 0 10px #00ffff; }}
             .hp-name {{ font-weight: bold; font-size: 1.2rem; margin-bottom: 8px; text-transform: uppercase; color: #fff; }}
-            .dot-container {{ display: flex; gap: 15px; }}
-            .dot {{ width: 20px; height: 20px; border-radius: 50%; background: #111; border: 2px solid #444; transition: all 0.3s ease; }}
-            
-            /* LES COMBATTANTS ET LES CALQUES */
+            .dot-container {{ display: flex; gap: 15px; }} .dot {{ width: 20px; height: 20px; border-radius: 50%; background: #111; border: 2px solid #444; transition: all 0.3s ease; }}
             .stage {{ position: absolute; bottom: 80px; width: 100%; display: flex; justify-content: space-between; padding: 0 100px; box-sizing: border-box; z-index: 5; }}
             .fighter {{ position: relative; width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); transition: transform 0.2s; }}
             .base-sprite {{ position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1; }}
             .overlay-sprite {{ position: absolute; top:0; left:0; width: 100%; height: 100%; object-fit: contain; z-index: 2; opacity: 0; transition: opacity 0.3s; filter: drop-shadow(0 0 25px #00ffff); }}
-            
-            /* TEXTE */
-            .dialogue-box {{ position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,20,40,0.9); border-top: 3px solid #00ffff; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; font-size: 1.1rem; font-weight: bold; color: #00ffff; text-shadow: 0 0 5px #00ffff; }}
-            
-            /* ANIMATIONS PHYSIQUES */
-            .anim-dash-p1 {{ animation: dash-right 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }}
-            .anim-dash-p2 {{ animation: dash-left 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }}
+            .dialogue-box {{ position: absolute; bottom: 0; width: 100%; height: 80px; background: rgba(0,20,40,0.9); border-top: 3px solid #00ffff; display: flex; align-items: center; padding: 0 20px; font-size: 1.1rem; font-weight: bold; color: #00ffff; text-shadow: 0 0 5px #00ffff; box-sizing: border-box; }}
+            .anim-dash-p1 {{ animation: dash-right 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }} .anim-dash-p2 {{ animation: dash-left 0.6s cubic-bezier(0.25, 1, 0.5, 1); z-index: 10; }}
             @keyframes dash-right {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(350px) scale(1.2); filter: drop-shadow(0 0 40px #00ffff); }} 100% {{ transform: translateX(0); }} }}
             @keyframes dash-left {{ 0% {{ transform: translateX(0); }} 50% {{ transform: translateX(-350px) scale(1.2); filter: drop-shadow(0 0 40px #ff00ff); }} 100% {{ transform: translateX(0); }} }}
-            
             .anim-hit {{ animation: shake-hit 0.4s ease; filter: drop-shadow(0 0 50px red) brightness(2) !important; }}
             @keyframes shake-hit {{ 0%, 100% {{ transform: translateX(0); }} 20% {{ transform: translateX(-15px) rotate(-10deg); }} 40% {{ transform: translateX(15px) rotate(10deg); }} 60% {{ transform: translateX(-10px); }} 80% {{ transform: translateX(10px); }} }}
-            
             .anim-screen-shake {{ animation: global-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }}
             @keyframes global-shake {{ 10%, 90% {{ transform: translate3d(-5px, 5px, 0); }} 20%, 80% {{ transform: translate3d(10px, -5px, 0); }} 30%, 50%, 70% {{ transform: translate3d(-15px, 10px, 0); }} 40%, 60% {{ transform: translate3d(15px, -10px, 0); }} }}
-            
             .anim-ko {{ animation: fade-out-ko 2s forwards; filter: grayscale(1) brightness(0) !important; }}
             @keyframes fade-out-ko {{ 100% {{ opacity:0; transform: translateY(50px) scale(0.5); }} }}
-        </style>
-        </head>
-        <body>
-
-        <div class="arena-container" id="arena">
-            <div class="grid"></div>
-            
-            <div class="hud">
-                <div class="hp-box">
-                    <div class="hp-name">{user}</div>
-                    <div class="dot-container" style="justify-content: flex-start;">
-                        <div class="dot" id="p1-dot-1"></div>
-                        <div class="dot" id="p1-dot-2"></div>
-                        <div class="dot" id="p1-dot-3"></div>
-                    </div>
-                </div>
-                <div class="hp-box" style="border-color:#ff00ff; box-shadow: 0 0 10px #ff00ff;">
-                    <div class="hp-name" style="text-align:right;">{adv_nom}</div>
-                    <div class="dot-container" style="justify-content: flex-end;">
-                        <div class="dot" id="p2-dot-1"></div>
-                        <div class="dot" id="p2-dot-2"></div>
-                        <div class="dot" id="p2-dot-3"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="stage">
-                <div class="fighter" id="p1">
-                    <img src="{b1_base}" class="base-sprite">
-                    <img src="{b1_p}" class="overlay-sprite" id="p1-pierre">
-                    <img src="{b1_f}" class="overlay-sprite" id="p1-feuille">
-                    <img src="{b1_c}" class="overlay-sprite" id="p1-ciseaux">
-                </div>
-                <div class="fighter" id="p2" style="transform: scaleX(-1);">
-                    <img src="{b2_base}" class="base-sprite">
-                    <img src="{b2_p}" class="overlay-sprite" id="p2-pierre">
-                    <img src="{b2_f}" class="overlay-sprite" id="p2-feuille">
-                    <img src="{b2_c}" class="overlay-sprite" id="p2-ciseaux">
-                </div>
-            </div>
-
-            <div class="dialogue-box" id="dialogue">Initialisation système... CLIQUEZ ICI POUR LANCER L'ASSAUT.</div>
+        </style></head><body>
+        <div class="arena-container" id="arena"><div class="grid"></div><div class="hud">
+            <div class="hp-box"><div class="hp-name">{nom_p1}</div><div class="dot-container" style="justify-content:flex-start;"><div class="dot" id="p1-dot-1"></div><div class="dot" id="p1-dot-2"></div><div class="dot" id="p1-dot-3"></div></div></div>
+            <div class="hp-box" style="border-color:#ff00ff; box-shadow:0 0 10px #ff00ff;"><div class="hp-name" style="text-align:right;">{nom_p2}</div><div class="dot-container" style="justify-content:flex-end;"><div class="dot" id="p2-dot-1"></div><div class="dot" id="p2-dot-2"></div><div class="dot" id="p2-dot-3"></div></div></div>
         </div>
-
+        <div class="stage">
+            <div class="fighter" id="p1"><img src="{b1_base}" class="base-sprite"><img src="{b1_p}" class="overlay-sprite" id="p1-pierre"><img src="{b1_f}" class="overlay-sprite" id="p1-feuille"><img src="{b1_c}" class="overlay-sprite" id="p1-ciseaux"></div>
+            <div class="fighter" id="p2" style="transform: scaleX(-1);"><img src="{b2_base}" class="base-sprite"><img src="{b2_p}" class="overlay-sprite" id="p2-pierre"><img src="{b2_f}" class="overlay-sprite" id="p2-feuille"><img src="{b2_c}" class="overlay-sprite" id="p2-ciseaux"></div>
+        </div>
+        <div class="dialogue-box" id="dialogue">Initialisation système... CLIQUEZ ICI POUR LANCER L'ASSAUT.</div></div>
         <script>
-            const scriptJson = {script_json};
-            
-            const dialogue = document.getElementById('dialogue');
-            const p1 = document.getElementById('p1');
-            const p2 = document.getElementById('p2');
-            const arena = document.getElementById('arena');
-            
-            let scoreP1 = 0;
-            let scoreP2 = 0;
-            let started = false;
-
-            function typeWriter(text, i, cb) {{
-                if (i === 0) dialogue.innerHTML = "";
-                if (i < text.length) {{
-                    dialogue.innerHTML += text.charAt(i);
-                    setTimeout(() => typeWriter(text, i + 1, cb), 20);
-                }} else if (cb) cb();
-            }}
-
+            const scriptJson = {script_json}; const dialogue = document.getElementById('dialogue'); const p1 = document.getElementById('p1'); const p2 = document.getElementById('p2'); const arena = document.getElementById('arena');
+            let scoreP1 = 0; let scoreP2 = 0; let started = false;
+            function typeWriter(text, i, cb) {{ if (i===0) dialogue.innerHTML=""; if (i<text.length) {{ dialogue.innerHTML+=text.charAt(i); setTimeout(()=>typeWriter(text, i+1, cb), 20); }} else if (cb) cb(); }}
             function sleep(ms) {{ return new Promise(resolve => setTimeout(resolve, ms)); }}
-
-            async function playTurn(tour) {{
-                return new Promise(resolve => {{
-                    typeWriter(tour.texte, 0, async () => {{
-                        
-                        // 1. APPARITION DES CALQUES D'ATTAQUE (OVERLAYS)
-                        let over1 = document.getElementById('p1-' + tour.p1_move);
-                        let over2 = document.getElementById('p2-' + tour.p2_move);
-                        if(over1) over1.style.opacity = 1;
-                        if(over2) over2.style.opacity = 1;
-                        
-                        await sleep(600); 
-
-                        // 2. CHOC PHYSIQUE ET MISE A JOUR DES PASTILLES
-                        let dot1 = document.getElementById('p1-dot-' + tour.tour);
-                        let dot2 = document.getElementById('p2-dot-' + tour.tour);
-
-                        if(tour.winner === 1) {{
-                            p1.classList.add('anim-dash-p1');
-                            await sleep(300);
-                            p2.classList.add('anim-hit');
-                            arena.classList.add('anim-screen-shake');
-                            
-                            // Vert pour P1, Rouge pour P2
-                            dot1.style.background = '#39ff14'; dot1.style.borderColor = '#39ff14'; dot1.style.boxShadow = '0 0 15px #39ff14';
-                            dot2.style.background = '#ff0055'; dot2.style.borderColor = '#ff0055'; dot2.style.boxShadow = '0 0 15px #ff0055';
-                            scoreP1++;
-                        }} else if (tour.winner === 2) {{
-                            p2.classList.add('anim-dash-p2');
-                            await sleep(300);
-                            p1.classList.add('anim-hit');
-                            arena.classList.add('anim-screen-shake');
-                            
-                            // Rouge pour P1, Vert pour P2
-                            dot1.style.background = '#ff0055'; dot1.style.borderColor = '#ff0055'; dot1.style.boxShadow = '0 0 15px #ff0055';
-                            dot2.style.background = '#39ff14'; dot2.style.borderColor = '#39ff14'; dot2.style.boxShadow = '0 0 15px #39ff14';
-                            scoreP2++;
-                        }} else {{
-                            // Égalité (Choc frontal)
-                            p1.classList.add('anim-dash-p1');
-                            p2.classList.add('anim-dash-p2');
-                            await sleep(300);
-                            p1.classList.add('anim-hit');
-                            p2.classList.add('anim-hit');
-                            arena.classList.add('anim-screen-shake');
-                            
-                            // Orange pour les deux (Égalité)
-                            dot1.style.background = '#eab308'; dot1.style.borderColor = '#eab308'; dot1.style.boxShadow = '0 0 10px #eab308';
-                            dot2.style.background = '#eab308'; dot2.style.borderColor = '#eab308'; dot2.style.boxShadow = '0 0 10px #eab308';
-                        }}
-
-                        // 4. NETTOYAGE POUR LE PROCHAIN ROUND
-                        await sleep(600);
-                        if(over1) over1.style.opacity = 0;
-                        if(over2) over2.style.opacity = 0;
-                        
-                        p1.className = "fighter";
-                        p2.className = "fighter";
-                        arena.className = "arena-container";
-
-                        await sleep(500);
-                        resolve();
-                    }});
-                }});
+            async function playTurn(tour) {{ return new Promise(resolve => {{ typeWriter(tour.texte, 0, async () => {{
+                let over1 = document.getElementById('p1-' + tour.p1_move); let over2 = document.getElementById('p2-' + tour.p2_move);
+                if(over1) over1.style.opacity = 1; if(over2) over2.style.opacity = 1; await sleep(600); 
+                let dot1 = document.getElementById('p1-dot-' + tour.tour); let dot2 = document.getElementById('p2-dot-' + tour.tour);
+                if(tour.winner === 1) {{ p1.classList.add('anim-dash-p1'); await sleep(300); p2.classList.add('anim-hit'); arena.classList.add('anim-screen-shake'); dot1.style.background = '#39ff14'; dot1.style.borderColor = '#39ff14'; dot1.style.boxShadow = '0 0 15px #39ff14'; dot2.style.background = '#ff0055'; dot2.style.borderColor = '#ff0055'; dot2.style.boxShadow = '0 0 15px #ff0055'; scoreP1++; }} 
+                else if (tour.winner === 2) {{ p2.classList.add('anim-dash-p2'); await sleep(300); p1.classList.add('anim-hit'); arena.classList.add('anim-screen-shake'); dot1.style.background = '#ff0055'; dot1.style.borderColor = '#ff0055'; dot1.style.boxShadow = '0 0 15px #ff0055'; dot2.style.background = '#39ff14'; dot2.style.borderColor = '#39ff14'; dot2.style.boxShadow = '0 0 15px #39ff14'; scoreP2++; }} 
+                else {{ p1.classList.add('anim-dash-p1'); p2.classList.add('anim-dash-p2'); await sleep(300); p1.classList.add('anim-hit'); p2.classList.add('anim-hit'); arena.classList.add('anim-screen-shake'); dot1.style.background = '#eab308'; dot1.style.borderColor = '#eab308'; dot1.style.boxShadow = '0 0 10px #eab308'; dot2.style.background = '#eab308'; dot2.style.borderColor = '#eab308'; dot2.style.boxShadow = '0 0 10px #eab308'; }}
+                await sleep(600); if(over1) over1.style.opacity = 0; if(over2) over2.style.opacity = 0; p1.className = "fighter"; p2.className = "fighter"; arena.className = "arena-container"; await sleep(500); resolve();
+            }}); }}); }}
+            async function startBattle() {{ if(started) return; started = true;
+                for(let i=0; i<scriptJson.length; i++) {{ dialogue.innerHTML = "=== ROUND " + scriptJson[i].tour + " ==="; await sleep(800); await playTurn(scriptJson[i]); }}
+                if(scoreP1 > scoreP2) {{ typeWriter("VICTOIRE DE {nom_p1} ! Le symbiote ennemi est anéanti.", 0); p2.classList.add('anim-ko'); }} 
+                else if (scoreP2 > scoreP1) {{ typeWriter("VICTOIRE DE {nom_p2} ! Entité abattue.", 0); p1.classList.add('anim-ko'); }} 
+                else {{ typeWriter("ÉGALITÉ PARFAITE. Aucun ascendant tactique.", 0); p1.classList.add('anim-ko'); p2.classList.add('anim-ko'); }}
             }}
-
-            async function startBattle() {{
-                if(started) return;
-                started = true;
-                for(let i=0; i<scriptJson.length; i++) {{
-                    dialogue.innerHTML = "=== ROUND " + scriptJson[i].tour + " ===";
-                    await sleep(800);
-                    await playTurn(scriptJson[i]);
-                }}
-                
-                // FIN DU COMBAT BASEE SUR LES PASTILLES
-                if(scoreP1 > scoreP2) {{
-                    typeWriter("VICTOIRE TOTALE ! Le symbiote ennemi est maîtrisé.", 0);
-                    p2.classList.add('anim-ko');
-                }} else if (scoreP2 > scoreP1) {{
-                    typeWriter("DÉFAITE CRITIQUE... Votre entité est mise hors-ligne.", 0);
-                    p1.classList.add('anim-ko');
-                }} else {{
-                    typeWriter("ÉGALITÉ PARFAITE. Aucun ascendant tactique.", 0);
-                    p1.classList.add('anim-ko');
-                    p2.classList.add('anim-ko');
-                }}
-            }}
-
             document.getElementById('arena').addEventListener('click', startBattle);
-        </script>
-        </body>
-        </html>
+        </script></body></html>
         """
+
+    # ==========================================
+    # AFFICHAGE DU COMBAT EN DIRECT (Si on vient de l'accepter)
+    # ==========================================
+    if st.session_state.get("combat_direct_html"):
+        st.markdown("<h2 style='color:#39ff14; text-align:center;'>⚔️ RÉSULTAT DE L'AFFRONTEMENT ⚔️</h2>", unsafe_allow_html=True)
+        components.html(st.session_state.combat_direct_html, height=450)
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("QUITTER LE RING 🚀", use_container_width=True):
+            st.session_state.combat_direct_html = None
+            st.rerun()
+        st.stop()
+
+    choix = {"pierre": f"🪨 {attaques_p1.get('pierre', {}).get('nom', 'Blocage')}", "feuille": f"🍃 {attaques_p1.get('feuille', {}).get('nom', 'Zone')}", "ciseaux": f"✂️ {attaques_p1.get('ciseaux', {}).get('nom', 'Lame')}"}
+
+    # ==========================================
+    # 1. FIL D'ACTUALITÉ DE L'ARÈNE (Les défis ouverts)
+    # ==========================================
+    st.markdown("### 📜 Fil d'Actualité des Combats")
+    combats_ouverts = [q for q in db["questions"] if q.get("type") == "combat" and q["statut"] == "ouvert"]
+    
+    if not combats_ouverts:
+        st.info("Aucun duel en attente sur la Matrice. Vous pouvez lancer un assaut ci-dessous.")
+    
+    for q in combats_ouverts:
+        att = q["attaquant"]
+        dfn = q["defenseur"]
         
-        components.html(html_arena, height=450)
+        with st.expander(f"⚔️ {q['titre']} - En attente de {dfn}"):
+            if user == dfn:
+                st.markdown(f"**{att}** vous a provoqué en duel ! Choisissez vos 3 parades pour riposter et clore le marché.")
+                c1, c2, c3 = st.columns(3)
+                deck_def = []
+                with c1: deck_def.append(st.selectbox("Tour 1", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key=f"d1_{q['id']}"))
+                with c2: deck_def.append(st.selectbox("Tour 2", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key=f"d2_{q['id']}"))
+                with c3: deck_def.append(st.selectbox("Tour 3", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key=f"d3_{q['id']}"))
+                
+                # Le défenseur doit aussi parier !
+                choix_pari_def = st.selectbox("Qui va gagner ce bain de sang ?", q["choix"], key=f"def_choix_{q['id']}")
+                cred_def = st.slider("Votre crédence (%)", 0, 100, 100, key=f"def_cred_{q['id']}")
+                
+                if st.button("ACCEPTER LE DÉFI ET COMBATTRE ⚡", key=f"btn_acc_{q['id']}"):
+                    # 1. Enregistrement du pari
+                    db["paris"].append({"id_question": q["id"], "joueur": user, "credences": {c: (cred_def if c == choix_pari_def else (100-cred_def)/2) for c in q["choix"]}, "mise": 0})
+                    
+                    # 2. Résolution du combat
+                    victoires = {"pierre": "ciseaux", "feuille": "pierre", "ciseaux": "feuille"}
+                    deck_att = q["deck_attaquant"]
+                    data_att = db["utilisateurs"][att]
+                    
+                    script_combat = []
+                    s_att, s_def = 0, 0
+                    
+                    for i in range(3):
+                        c_a = deck_att[i]
+                        c_d = deck_def[i]
+                        n_a = data_att.get("attaques", {}).get(c_a, {}).get("nom", c_a).upper()
+                        n_d = attaques_p1.get(c_d, {}).get("nom", c_d).upper()
+                        
+                        if c_a == c_d:
+                            v = 0; txt = f"CHOC ! [{n_a}] annule [{n_d}] !"
+                        elif victoires[c_a] == c_d:
+                            v = 1; txt = f"BIM ! [{n_a}] détruit [{n_d}] !"; s_att += 1
+                        else:
+                            v = 2; txt = f"AÏE ! [{n_d}] écrase [{n_a}] !"; s_def += 1
+                            
+                        script_combat.append({"tour": i+1, "p1_move": c_a, "p2_move": c_d, "winner": v, "texte": txt, "dmg1": 0, "dmg2": 0})
+                    
+                    if s_att > s_def: q["resultat"] = f"Victoire {att}"
+                    elif s_def > s_att: q["resultat"] = f"Victoire {dfn}"
+                    else: q["resultat"] = "Égalité"
+                    
+                    q["statut"] = "clos"
+                    
+                    # On génère l'HTML final et on le stocke dans le marché pour que les parieurs puissent le voir !
+                    html_final = generer_html_combat(att, dfn, data_att, u_data, script_combat)
+                    q["html_combat"] = html_final
+                    
+                    # Le défenseur le voit en direct, donc on le met dans son historique vu
+                    db["utilisateurs"][user]["historique_vu"].append(q["id"])
+                    
+                    save_data(db)
+                    st.session_state.combat_direct_html = html_final
+                    st.rerun()
+            else:
+                pari_existant = next((p for p in db["paris"] if p["id_question"] == q["id"] and p["joueur"] == user), None)
+                if pari_existant:
+                    st.success("🎫 Ticket de pari enregistré pour ce combat. En attente du défenseur...")
+                else:
+                    st.markdown("🎲 **Les paris sont ouverts pour ce duel !**")
+                    choix_pari = st.selectbox("Qui va gagner ?", q["choix"], key=f"spec_choix_{q['id']}")
+                    cred = st.slider("Votre crédence (%)", 0, 100, 50, key=f"spec_cred_{q['id']}")
+                    if st.button("VALIDER LE PARI", key=f"btn_spec_{q['id']}"):
+                        db["paris"].append({"id_question": q["id"], "joueur": user, "credences": {c: (cred if c == choix_pari else (100-cred)/2) for c in q["choix"]}, "mise": 0})
+                        save_data(db)
+                        st.success("Pari validé !")
+                        st.rerun()
+
+    st.markdown("---")
+    
+    # ==========================================
+    # 2. LANCER UN ASSAUT
+    # ==========================================
+    st.markdown("### ⚔️ Organiser un Assaut")
+    adversaires_valides = [k for k, v in db["utilisateurs"].items() if k != user and "attaques" in v]
+    
+    if not adversaires_valides:
+        st.info("Aucun adversaire génétiquement modifié n'est disponible.")
+        st.stop()
+        
+    adv_nom = st.selectbox("Cible de l'assaut :", adversaires_valides)
+    
+    st.write(f"Saisissez votre séquence d'attaque aveugle contre **{adv_nom}** :")
+    colA, colB, colC = st.columns(3)
+    deck_attaque = []
+    with colA: deck_attaque.append(st.selectbox("Atk Tour 1", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="a1"))
+    with colB: deck_attaque.append(st.selectbox("Atk Tour 2", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="a2"))
+    with colC: deck_attaque.append(st.selectbox("Atk Tour 3", ["pierre", "feuille", "ciseaux"], format_func=lambda x: choix[x], key="a3"))
+    
+    st.markdown("#### 🎲 Mise Initiale (Obligatoire)")
+    options_victoire = [f"Victoire {user}", f"Victoire {adv_nom}", "Égalité"]
+    choix_att = st.selectbox("Sur quelle issue pariez-vous ?", options_victoire)
+    cred_att = st.slider("Votre crédence sur cette issue (%)", 0, 100, 100)
+    
+    if st.button("⚡ LANCER LE DÉFI ET OUVRIR LE MARCHÉ ⚡", use_container_width=True):
+        combat_id = f"combat_{int(time.time())}"
+        
+        # Création du marché
+        nouvelle_question = {
+            "id": combat_id,
+            "titre": f"ASSAUT : {user} attaque {adv_nom} !",
+            "type": "combat",
+            "statut": "ouvert",
+            "attaquant": user,
+            "defenseur": adv_nom,
+            "deck_attaquant": deck_attaque,
+            "choix": options_victoire,
+            "resultat": None
+        }
+        db["questions"].append(nouvelle_question)
+        
+        # Création du pari de l'attaquant
+        db["paris"].append({
+            "id_question": combat_id,
+            "joueur": user,
+            "credences": {c: (cred_att if c == choix_att else (100-cred_att)/2) for c in options_victoire},
+            "mise": 0
+        })
+        
+        save_data(db)
+        st.success(f"Défi lancé ! Le marché est ouvert sur la tête de {adv_nom}.")
+        st.rerun()
