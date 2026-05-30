@@ -9,6 +9,8 @@ from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 import io
 import numpy as np
+import google.generativeai as genai
+import re # Pour nettoyer le texte renvoyé par l'IA
 
 # ==========================================
 # 0. CONFIGURATION & THÈME CSS (HYPERPOP + MATRIX)
@@ -331,6 +333,60 @@ def jouer_son_invisible(nom_fichier):
 # 1. GESTION BDD (VIA GITHUB GIST - LA MATRICE)
 # ==========================================
 import requests
+
+
+
+def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style):
+    """
+    Envoie une requête à Gemini 1.5 Flash pour générer un familier SVG.
+    """
+    # 1. Configuration de l'API avec ta clé secrète
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    
+    # 2. On utilise le modèle le plus rapide et gratuit
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # 3. Le Prompt Absolu (celui qu'on a perfectionné ensemble)
+    prompt = f"""
+Tu es l'Architecte de la Matrice. Dessine un familier virtuel en code SVG pur.
+AUCUN TEXTE AVANT OU APRÈS. UNIQUEMENT LE <svg>...</svg>.
+
+CONTEXTE : 
+- Forme actuelle : {forme_actuelle} 
+- Demande de mutation : {requete} 
+- Niveau du joueur : {niveau}
+- Style de jeu : {style} (Adapte les couleurs et la forme à ce style).
+
+RÈGLES STRICTES DE GÉNÉRATION (OBLIGATOIRES) :
+1. FORMAT : <svg viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">. Centre à (100,100).
+2. EFFET 3D : Utilise <defs> avec au moins un <radialGradient> pour donner du volume au corps principal.
+3. HALO ANIMÉ : Ajoute une forme avec <animate attributeName="stroke-opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite"/>
+4. YEUX VIVANTS : Les yeux DOIVENT être des <ellipse> brillantes. Ajoute dedans : <animate attributeName="ry" values="10;1;10" dur="4s" keyTimes="0;0.05;1" repeatCount="indefinite"/>
+5. SYMÉTRIE ET STYLE : Design plat, géométrie sacrée, Hyperpop/Cyberpunk.
+"""
+    
+    try:
+        # 4. Appel à la Matrice
+        reponse = model.generate_content(prompt)
+        code_brut = reponse.text
+        
+        # 5. Nettoyage Chirurgical (Pour enlever les ```xml au cas où l'IA en met)
+        code_propre = reponse.text.strip()
+        if "```" in code_propre:
+            # Extrait tout ce qui est entre <svg et </svg>
+            match = re.search(r'(<svg.*?</svg>)', code_propre, re.DOTALL | re.IGNORECASE)
+            if match:
+                code_propre = match.group(1)
+            else:
+                # Nettoyage de base si la regex échoue
+                lignes = code_propre.split('\n')
+                code_propre = '\n'.join([l for l in lignes if not l.startswith('```')])
+                
+        return code_propre
+        
+    except Exception as e:
+        return f"Erreur de la Matrice : {e}"
+
 
 def charger_joueurs():
     # On lit les identifiants depuis le coffre-fort (st.secrets)
@@ -857,3 +913,64 @@ elif st.session_state.page_actuelle == "👾 Profil":
                 save_data(db)
                 
                 trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
+
+elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
+    st.subheader("LABORATOIRE D'ÉVOLUTION SYMBIOTIQUE")
+    
+    # On récupère les infos du joueur connecté
+    u_data = db["utilisateurs"][user]
+    points_actuels = u_data.get("score", 0)
+    niveau_actuel = obtenir_rang(points_actuels) # Ta fonction qui calcule le niveau
+    
+    # On récupère son familier actuel (s'il en a un)
+    familier_svg = u_data.get("familier_svg", None)
+    forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
+    
+    st.write(f"**Crédits disponibles :** {round(points_actuels, 1)} PTS")
+    
+    col_visu, col_console = st.columns([1, 2])
+    
+    with col_visu:
+        st.markdown("### Entité Actuelle")
+        if familier_svg:
+            # On affiche le familier stocké dans la DB !
+            st.markdown(familier_svg, unsafe_allow_html=True)
+        else:
+            st.info("Aucune entité détectée. L'incubation est requise.")
+            
+    with col_console:
+        st.markdown("### Terminal de Mutation (Coût : 50 PTS)")
+        
+        nouvelle_requete = st.text_input("Saisissez la mutation désirée :", placeholder="ex: Ajoute des ailes de néon rouge")
+        style_joueur = st.selectbox("Alignement de l'Entité :", ["Kamikaze (Agressif)", "Prudent (Défensif)", "Équilibré"])
+        
+        if st.button("Lancer la Séquence 🧬"):
+            if points_actuels < 50:
+                st.error("Crédits insuffisants. La Matrice refuse l'accès.")
+            elif len(nouvelle_requete) < 5:
+                st.warning("Soyez plus précis dans votre demande de mutation.")
+            else:
+                with st.spinner("Transmission des données vers l'Architecte (Gemini API)..."):
+                    # 1. On appelle notre fonction magique !
+                    nouveau_svg = muter_entite_avec_gemini(
+                        forme_actuelle=forme_historique,
+                        requete=nouvelle_requete,
+                        niveau=points_actuels, # Plus il a de points, plus l'IA le fera badass
+                        style=style_joueur
+                    )
+                    
+                    if nouveau_svg.startswith("<svg"):
+                        # 2. Si c'est un succès, on met à jour la base de données
+                        db["utilisateurs"][user]["score"] -= 50 # On débite 50 points
+                        db["utilisateurs"][user]["familier_svg"] = nouveau_svg
+                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete # On sauvegarde pour la prochaine mutation
+                        
+                        # 3. Sauvegarde sur GitHub (ta fonction de sauvegarde Gist)
+                        sauvegarder_gist() 
+                        
+                        st.success("Mutation réussie ! Entité mise à jour.")
+                        st.balloons()
+                        st.rerun() # Recharge la page pour afficher le nouveau SVG et le nouveau solde
+                    else:
+                        st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
+                        st.code(nouveau_svg)
