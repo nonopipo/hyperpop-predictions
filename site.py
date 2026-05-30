@@ -1183,6 +1183,9 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     utilisateurs_tries = sorted(db["utilisateurs"].items(), key=lambda x: x[1].get("score", 0), reverse=True)
     html_bestiaire = "<div class='bestiaire-container'>"
     
+# ==========================================
+    # GÉNÉRATION DU BESTIAIRE (VERSION BLINDÉE)
+    # ==========================================
     for index, (u_nom, u_data) in enumerate(utilisateurs_tries):
         score = round(u_data.get('score', 0), 1)
         av = u_data.get("avatar")
@@ -1190,16 +1193,18 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         
         fam_svg = u_data.get("familier_svg", "")
         if fam_svg:
-            fam_svg_propre = nettoyer_svg_game(fam_svg) # Utilise la même fonction de nettoyage (100% de taille et sans fond)
+            # On encode le SVG en base64 pour qu'il soit traité comme une image isolée
+            b64_svg = base64.b64encode(fam_svg.encode('utf-8')).decode('utf-8')
+            fam_svg_display = f"<img src='data:image/svg+xml;base64,{b64_svg}' style='width:100%; height:100%; object-fit:contain;'>"
         else:
-            fam_svg_propre = "<div style='font-family:monospace; color:#ff0055; font-weight:bold; font-size:1.1rem; text-align:center;'>[ EN INCUBATION ]</div>"
+            fam_svg_display = "<div style='color:#ff0055; font-size:0.8rem; text-align:center;'>[ INCUBATION ]</div>"
             
         badges = "".join(u_data.get("badges", []))
         
         html_bestiaire += f"""
         <div class='bestiaire-card'>
             <div class='bestiaire-rank'>#{index + 1}</div>
-            <div class='bestiaire-pet'>{fam_svg_propre}</div>
+            <div class='bestiaire-pet'>{fam_svg_display}</div>
             <div class='bestiaire-info'>
                 {img_tag}
                 <div class='bestiaire-details'>
