@@ -1135,28 +1135,40 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
                 st.warning("Soyez plus précis dans votre demande de mutation.")
             else:
                 with st.spinner("Transmission des données vers l'Architecte (Gemini API)..."):
-                    # 1. On appelle notre fonction magique !
+                    
+                    # --- NOUVEAU : Récupération du dernier thème ---
+                    # On cherche le dernier pari du joueur pour l'intégrer au prompt
+                    paris_du_joueur = [p for p in db.get("paris", []) if p["joueur"] == user]
+                    if paris_du_joueur:
+                        id_dernier_pari = paris_du_joueur[-1]["id_question"]
+                        question_liee = next((q for q in db["questions"] if q["id"] == id_dernier_pari), None)
+                        theme_a_envoyer = question_liee["titre"] if question_liee else "Cyberpunk"
+                    else:
+                        theme_a_envoyer = "Cyberpunk" # Thème par défaut si aucun pari
+                    # -----------------------------------------------
+
+                    # 1. On appelle notre fonction avec LE NOUVEL ARGUMENT !
                     nouveau_svg = muter_entite_avec_gemini(
                         forme_actuelle=forme_historique,
                         requete=nouvelle_requete,
-                        niveau=points_actuels, # Plus il a de points, plus l'IA le fera badass
-                        style=style_joueur
+                        niveau=points_actuels, 
+                        style=style_joueur,
+                        dernier_theme=theme_a_envoyer # <--- L'ARGUMENT MANQUANT ÉTAIT LÀ !
                     )
                     
                     if nouveau_svg.startswith("<svg"):
                         # 2. Si c'est un succès, on met à jour la base de données
-                        db["utilisateurs"][user]["brins_adn"] -= 50 # On débite 50 points
+                        db["utilisateurs"][user]["brins_adn"] -= 50
                         db["utilisateurs"][user]["familier_svg"] = nouveau_svg
-                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete # On sauvegarde pour la prochaine mutation
+                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
                         db["utilisateurs"][user]["classe_familier"] = style_joueur
-
                         
-                        # 3. Sauvegarde sur GitHub (ta vraie fonction)
+                        # 3. Sauvegarde sur GitHub
                         save_data(db)
                         
                         st.success("Mutation réussie ! Entité mise à jour.")
                         st.balloons()
-                        st.rerun() # Recharge la page pour afficher le nouveau SVG et le nouveau solde
+                        st.rerun()
                     else:
                         st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
                         st.code(nouveau_svg)
