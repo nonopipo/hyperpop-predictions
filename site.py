@@ -176,7 +176,7 @@ def injecter_design():
         .hyper-table th { background: #00ffff; color: #000; padding: 12px; text-transform: uppercase; font-weight: 900; }
         .hyper-table td { padding: 10px; color: #39ff14; border-bottom: 2px dashed #ff00ff; font-weight: bold; }
 
-        /* CSS DU CHAT (DÉBAT MATRICIEL) */
+        /* CSS DU CHAT (DÉBAT ) */
         .chat-container { background: rgba(0,0,0,0.6); padding: 10px; border-left: 4px solid #00ffff; border-radius: 0 10px 10px 0; margin-bottom: 8px; font-family: 'Courier New', monospace; box-shadow: inset 0 0 10px rgba(0,255,255,0.1); }
         .chat-user { color: #ff00ff; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 5px #ff00ff; }
         .chat-msg { color: #fff; margin-left: 10px; }
@@ -651,7 +651,7 @@ if st.session_state.get("check_recompenses", False):
                 
                 # L'ANIMATION EN FONCTION DU RÉSULTAT
                 if net_pts < 0: 
-                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION MATRICIELLE.</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
+                    html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-broken'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#ff0055 !important; text-shadow:none;'>SANCTION .</h3><p class='zoom-pop-text delay-3'>Ton score vient d'être saigné.</p>"
                 elif net_pts == 0: 
                     html_recompense += "<div class='zoom-pop-text delay-3'><div class='ball-fade'>🔮</div></div><h3 class='zoom-pop-text delay-3' style='color:#aaaaaa !important; text-shadow:none;'>Pari Blanc.</h3><p class='zoom-pop-text delay-3'>Tu n'as rien gagné, rien perdu.</p>"
                 elif net_pts <= 40: 
@@ -837,8 +837,8 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
                         trigger_animation("PRÉDICTION ENREGISTRÉE", jouer_son=True)
                 else: st.error(f"Erreur : Total actuel = {sum(creds.values())}%.")
                 
-                # SOCIAL : DÉBAT MATRICIEL
-                st.markdown("<br><h4 style='color:#ff00ff; font-size:1.1rem;'>💬 Débat Matriciel</h4>", unsafe_allow_html=True)
+                # SOCIAL : DÉBAT 
+                st.markdown("<br><h4 style='color:#ff00ff; font-size:1.1rem;'>💬 Débat </h4>", unsafe_allow_html=True)
                 for c in q.get("commentaires", []):
                     st.markdown(f"<div class='chat-container'><span class='chat-user'>{c['joueur']} :</span><span class='chat-msg'>{c['texte']}</span></div>", unsafe_allow_html=True)
                 
@@ -887,8 +887,8 @@ if st.session_state.page_actuelle == "🔮 Marchés Actifs":
                         st.markdown(f"<div style='color:#ffff00; font-size:1.3rem; font-weight:bold;'>{opt} : {mon_pari['credences'].get(opt, 0)}%</div>", unsafe_allow_html=True)
                         st.caption(f"Cote actuelle : x{cote}")
                         
-                # SOCIAL : DÉBAT MATRICIEL
-                st.markdown("<br><h4 style='color:#ff00ff; font-size:1.1rem;'>💬 Débat Matriciel</h4>", unsafe_allow_html=True)
+                # SOCIAL : DÉBAT 
+                st.markdown("<br><h4 style='color:#ff00ff; font-size:1.1rem;'>💬 Débat </h4>", unsafe_allow_html=True)
                 for c in q.get("commentaires", []):
                     st.markdown(f"<div class='chat-container'><span class='chat-user'>{c['joueur']} :</span><span class='chat-msg'>{c['texte']}</span></div>", unsafe_allow_html=True)
                 
@@ -911,12 +911,12 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     import random
     import streamlit.components.v1 as components
     
-    st.subheader("LE BESTIAIRE MATRICIEL")
+    st.subheader("LE BESTIAIRE ")
 
     st.markdown("<p style='color:#ff0055; font-weight:bold; font-size:1.2rem; text-align:center;'>🚨 INTRUSION DÉTECTÉE : Cliquez n'importe où sur l'écran, bougez la souris pour esquiver et visez avec le tir automatique ! (Max 3 cibles) 🚨</p>", unsafe_allow_html=True)
 
     # ==========================================
-    # 🌟 MINIJEU CACHÉ : SURVIE MATRICIELLE 
+    # 🌟 MINIJEU CACHÉ : SURVIE  
     # ==========================================
     st.markdown("<div id='cyber-game-anchor'></div>", unsafe_allow_html=True)
     
@@ -1361,7 +1361,7 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     height: 450px;
                     overflow: hidden;
                 }}
-                /* La grille matricielle de fond */
+                /* La grille  de fond */
                 .symbiote-grid {{
                     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
                     background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
@@ -1553,7 +1553,7 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     # 🎰 LA LOTERIE MUTAGÈNE (GACHA)
     # ==========================================
     st.markdown("""<hr style="border-color: #ff00ff; border-width: 3px; border-style: dashed; margin: 40px 0;">""", unsafe_allow_html=True)
-    st.subheader("🎰 LA LOTERIE MATRICIELLE")
+    st.subheader("🎰 LA LOTERIE ")
     
     col_gacha_info, col_gacha_btn = st.columns([1, 1])
     
