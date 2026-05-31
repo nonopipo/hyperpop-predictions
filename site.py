@@ -391,23 +391,26 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_the
     try:
         model = genai.GenerativeModel('gemini-flash-latest')
         
-        prompt = f"""Tu es un Architecte Cyberpunk. Ta mission est de générer un familier virtuel ET ses 3 attaques uniques basées sur le principe du Pierre-Feuille-Ciseaux.
+        prompt = f"""Tu es un Architecte. Ta mission est de générer un familier virtuel ET ses 3 attaques uniques basées sur le principe du Pierre-Feuille-Ciseaux.
         - État actuel : {forme_actuelle}
         - Demande de mutation du joueur : {requete}
         - Alignement : {style}
         - Thème récent : {dernier_theme}
+
+        Règle du SVG de base : sois créatif, anime des yeux expressifs et anime les membres
         
         RÈGLES DU PIERRE-FEUILLE-CISEAUX :
-        1. PIERRE : Représente la Défense, le Poids, la Terre, le Bouclier, ou un projectile lourd.
-        2. FEUILLE : Représente la Magie, l'Énergie de Zone, le Vent, l'Enveloppement.
-        3. CISEAUX : Représente la Vitesse, le Tranchant, les Lames, les Griffes.
+        1. PIERRE : Représente la Défense, la Terre, le Bouclier, ou un projectile lourd.
+        2. FEUILLE : Représente un souffle d'énergie, la mitraille, le Vent, 
+        3. CISEAUX : Représente la Vitesse, le Tranchant, les Lames, les Griffes ou un tir sniper
 
         CONTRAINTES SVG :
         - Tous les SVGs doivent faire exactement viewBox="0 0 200 200" width="100%" height="100%".
         - NE METS AUCUN FOND (pas de rect de fond, transparence totale).
         - Les overlays d'attaque (pierre, feuille, ciseaux) ne doivent contenir QUE l'effet visuel de l'attaque, ils seront superposés sur le familier.
-        - Utilise des animations SMIL (<animate>) dans les overlays pour donner de l'impact (ex: des griffes qui apparaissent, un bouclier qui pulse).
-
+        - Utilise des animations SMIL (<animate>) dans les overlays pour donner de l'impact (ex: des griffes qui apparaissent, un bouclier qui pulse, des tirs).
+        - les animations doivent être cohérentes avec la nature du perso
+        
         RÉPONSE ATTENDUE : UNIQUEMENT UN OBJET JSON STRICT. AUCUN TEXTE AVANT NI APRÈS.
         Format JSON requis :
         {{
