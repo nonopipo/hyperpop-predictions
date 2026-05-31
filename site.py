@@ -1336,25 +1336,29 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
                     
     with tab_symbiote:
-        st.markdown("<p style='color:#39ff14; margin-top:10px;'>Observation de l'entité cybernétique en taille réelle.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#39ff14; margin-top:10px;'>Observation de l'entité cybernétique et test des capacités martiales.</p>", unsafe_allow_html=True)
         
         familier_svg = db["utilisateurs"][user].get("familier_svg", None)
         classe_fam = db["utilisateurs"][user].get("classe_familier", "Équilibré")
+        attaques = db["utilisateurs"][user].get("attaques", {})
         
         if familier_svg:
-            # 1. Nettoyage absolu et Laser anti-fond
-            svg_propre = re.sub(r'', '', familier_svg, flags=re.DOTALL)
-            svg_propre = svg_propre.replace("```xml", "").replace("```html", "").replace("```", "")
-            svg_propre = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_propre, flags=re.IGNORECASE)
-            svg_propre = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', svg_propre, flags=re.IGNORECASE)
-            svg_propre = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', svg_propre, flags=re.IGNORECASE)
+            # Fonction utilitaire de nettoyage absolu (Laser anti-fond)
+            def purger_svg(svg_raw):
+                if not svg_raw: return ""
+                s = re.sub(r'<!--.*?-->', '', svg_raw, flags=re.DOTALL)
+                s = s.replace("```xml", "").replace("
+```html", "").replace("```", "")
+                s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
+                s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
+                s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
+                s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
+                return s.replace('\n', ' ').strip()
+
+            svg_propre = purger_svg(familier_svg)
             
-            # 2. Dimensions dynamiques pour s'étendre au maximum dans la chambre
-            svg_propre = re.sub(r'width="[^"]*"', 'width="100%"', svg_propre, count=1, flags=re.IGNORECASE)
-            svg_propre = re.sub(r'height="[^"]*"', 'height="100%"', svg_propre, count=1, flags=re.IGNORECASE)
-            svg_propre = svg_propre.replace('\n', ' ').strip()
-            
-            # 3. Adaptation de l'aura lumineuse selon la classe (Couleur du néon)
+            # Adaptation de l'aura lumineuse selon la classe (Couleur du néon)
             if "Kamikaze" in classe_fam:
                 couleur_aura = "rgba(255, 0, 85, 0.7)"
                 border_color = "#ff0055"
@@ -1365,7 +1369,31 @@ elif st.session_state.page_actuelle == "👾 Profil":
                 couleur_aura = "rgba(57, 255, 20, 0.7)"
                 border_color = "#39ff14"
             
-            # 4. Le Caisson Holographique CSS
+            # ----------------------------------------------------
+            # NOUVEAU : GESTION DES CALQUES D'ATTAQUE
+            # ----------------------------------------------------
+            overlay_html = ""
+            if attaques:
+                st.markdown("### ⚡ Simulateur de Combat")
+                choix_noms = {
+                    "repos": "🧘 Repos",
+                    "pierre": f"🪨 {attaques.get('pierre', {}).get('nom', 'Défense')}",
+                    "feuille": f"🍃 {attaques.get('feuille', {}).get('nom', 'Zone')}",
+                    "ciseaux": f"✂️ {attaques.get('ciseaux', {}).get('nom', 'Attaque')}"
+                }
+                
+                # Le menu interactif pour allumer les attaques
+                simul_active = st.radio("Séquence à projeter :", ["repos", "pierre", "feuille", "ciseaux"], format_func=lambda x: choix_noms[x], horizontal=True)
+                
+                if simul_active != "repos":
+                    svg_attaque = attaques.get(simul_active, {}).get("svg_overlay", "")
+                    if svg_attaque:
+                        attaque_propre = purger_svg(svg_attaque)
+                        # Le calque d'attaque est préparé pour se superposer au monstre
+                        overlay_html = f"<div style='position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; filter: drop-shadow(0 0 25px {border_color});'>{attaque_propre}</div>"
+            # ----------------------------------------------------
+            
+            # Le Caisson Holographique CSS (Modifié pour accueillir les superpositions)
             html_showcase = f"""
             <style>
                 .symbiote-showcase {{
@@ -1381,7 +1409,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     height: 450px;
                     overflow: hidden;
                 }}
-                /* La grille  de fond */
                 .symbiote-grid {{
                     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
                     background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
@@ -1389,7 +1416,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     pointer-events: none;
                     z-index: 1;
                 }}
-                /* L'étiquette de données en haut à gauche */
                 .symbiote-tag {{
                     position: absolute; top: 15px; left: 20px;
                     color: {border_color}; font-family: 'Courier New', monospace;
@@ -1397,7 +1423,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     z-index: 5;
                     background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; border-left: 3px solid {border_color};
                 }}
-                /* Le conteneur du monstre (qui lévite) */
                 .symbiote-container {{
                     width: 320px; height: 320px;
                     filter: drop-shadow(0 0 25px {border_color});
@@ -1414,7 +1439,14 @@ elif st.session_state.page_actuelle == "👾 Profil":
                 <div class="symbiote-grid"></div>
                 <div class="symbiote-tag">ALIGNEMENT : {classe_fam.split(' ')[0].upper()}</div>
                 <div class="symbiote-container">
-                    {svg_propre}
+                    <div style="position:relative; width:100%; height:100%;">
+                        <!-- Le corps de base -->
+                        <div style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:10;">
+                            {svg_propre}
+                        </div>
+                        <!-- Le calque d'attaque (s'il est activé) -->
+                        {overlay_html}
+                    </div>
                 </div>
             </div>
             """
@@ -1422,7 +1454,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
             
         else:
             st.warning("⚠️ Aucun Symbiote détecté dans vos registres. Rendez-vous à la Clinique Cybernétique pour commencer une incubation.")
-
 elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
     import random
     st.subheader("LABORATOIRE D'ÉVOLUTION SYMBIOTIQUE")
