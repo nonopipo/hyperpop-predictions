@@ -1453,7 +1453,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
         else:
             st.warning("⚠️ Aucun Symbiote détecté dans vos registres. Rendez-vous à la Clinique Cybernétique pour commencer une incubation.")
 elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
-import random
     st.subheader("LABORATOIRE & FORGE MARTIALE")
     
     u_data = db["utilisateurs"][user]
