@@ -1335,7 +1335,7 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     
                     trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
                     
-    with tab_symbiote:
+with tab_symbiote:
         st.markdown("<p style='color:#39ff14; margin-top:10px;'>Observation de l'entité cybernétique et test des capacités martiales.</p>", unsafe_allow_html=True)
         
         familier_svg = db["utilisateurs"][user].get("familier_svg", None)
@@ -1368,9 +1368,6 @@ elif st.session_state.page_actuelle == "👾 Profil":
                 couleur_aura = "rgba(57, 255, 20, 0.7)"
                 border_color = "#39ff14"
             
-            # ----------------------------------------------------
-            # NOUVEAU : GESTION DES CALQUES D'ATTAQUE
-            # ----------------------------------------------------
             overlay_html = ""
             if attaques:
                 st.markdown("### ⚡ Simulateur de Combat")
@@ -1390,64 +1387,19 @@ elif st.session_state.page_actuelle == "👾 Profil":
                         attaque_propre = purger_svg(svg_attaque)
                         # Le calque d'attaque est préparé pour se superposer au monstre
                         overlay_html = f"<div style='position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; filter: drop-shadow(0 0 25px {border_color});'>{attaque_propre}</div>"
-            # ----------------------------------------------------
             
-            # Le Caisson Holographique CSS (Modifié pour accueillir les superpositions)
+            # ------------------------------------------------------------------------
+            # FIX ANTI-BUG BLANC : Tout le HTML est collé sur une seule et même ligne
+            # ------------------------------------------------------------------------
             html_showcase = f"""
             <style>
-                .symbiote-showcase {{
-                    background: radial-gradient(circle at center, #090014 0%, #000000 100%);
-                    border: 3px solid {border_color};
-                    box-shadow: 0 0 30px {couleur_aura}, inset 0 0 60px rgba(0,0,0,0.9);
-                    border-radius: 15px;
-                    margin-top: 15px;
-                    position: relative;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 450px;
-                    overflow: hidden;
-                }}
-                .symbiote-grid {{
-                    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                    background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-                    background-size: 30px 30px;
-                    pointer-events: none;
-                    z-index: 1;
-                }}
-                .symbiote-tag {{
-                    position: absolute; top: 15px; left: 20px;
-                    color: {border_color}; font-family: 'Courier New', monospace;
-                    font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px {border_color};
-                    z-index: 5;
-                    background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; border-left: 3px solid {border_color};
-                }}
-                .symbiote-container {{
-                    width: 320px; height: 320px;
-                    filter: drop-shadow(0 0 25px {border_color});
-                    animation: float-showcase 4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
-                    z-index: 10;
-                }}
-                @keyframes float-showcase {{
-                    0% {{ transform: translateY(15px) scale(0.98); }}
-                    100% {{ transform: translateY(-15px) scale(1.02); filter: drop-shadow(0 0 45px {border_color}); }}
-                }}
+                .symbiote-showcase {{ background: radial-gradient(circle at center, #090014 0%, #000000 100%); border: 3px solid {border_color}; box-shadow: 0 0 30px {couleur_aura}, inset 0 0 60px rgba(0,0,0,0.9); border-radius: 15px; margin-top: 15px; position: relative; display: flex; justify-content: center; align-items: center; height: 450px; overflow: hidden; }}
+                .symbiote-grid {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 30px 30px; pointer-events: none; z-index: 1; }}
+                .symbiote-tag {{ position: absolute; top: 15px; left: 20px; color: {border_color}; font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1rem; text-shadow: 0 0 10px {border_color}; z-index: 5; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px; border-left: 3px solid {border_color}; }}
+                .symbiote-container {{ width: 320px; height: 320px; filter: drop-shadow(0 0 25px {border_color}); animation: float-showcase 4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate; z-index: 10; }}
+                @keyframes float-showcase {{ 0% {{ transform: translateY(15px) scale(0.98); }} 100% {{ transform: translateY(-15px) scale(1.02); filter: drop-shadow(0 0 45px {border_color}); }} }}
             </style>
-            
-            <div class="symbiote-showcase">
-                <div class="symbiote-grid"></div>
-                <div class="symbiote-tag">ALIGNEMENT : {classe_fam.split(' ')[0].upper()}</div>
-                <div class="symbiote-container">
-                    <div style="position:relative; width:100%; height:100%;">
-                        <!-- Le corps de base -->
-                        <div style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:10;">
-                            {svg_propre}
-                        </div>
-                        <!-- Le calque d'attaque (s'il est activé) -->
-                        {overlay_html}
-                    </div>
-                </div>
-            </div>
+<div class="symbiote-showcase"><div class="symbiote-grid"></div><div class="symbiote-tag">ALIGNEMENT : {classe_fam.split(' ')[0].upper()}</div><div class="symbiote-container"><div style="position:relative; width:100%; height:100%;"><div style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:10;">{svg_propre}</div>{overlay_html}</div></div></div>
             """
             st.markdown(html_showcase, unsafe_allow_html=True)
             
