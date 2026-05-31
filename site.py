@@ -982,8 +982,8 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
     st.markdown("<p style='color:#ff0055; font-weight:bold; font-size:1.2rem; text-align:center;'>🚨 INTRUSION DÉTECTÉE : Cliquez n'importe où sur l'écran, bougez la souris pour esquiver et visez avec le tir automatique ! (Max 3 cibles) 🚨</p>", unsafe_allow_html=True)
 
-    # ==========================================
-    # 🌟 MINIJEU CACHÉ : SURVIE  
+# ==========================================
+    # 🌟 MINIJEU CACHÉ : SURVIE (AVEC VRAIES ATTAQUES)
     # ==========================================
     st.markdown("<div id='cyber-game-anchor'></div>", unsafe_allow_html=True)
     
@@ -997,23 +997,44 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         svg_code = re.sub(r'width="[^"]*"', 'width="100%"', svg_code, count=1, flags=re.IGNORECASE)
         svg_code = re.sub(r'height="[^"]*"', 'height="100%"', svg_code, count=1, flags=re.IGNORECASE)
         return svg_code.replace('\n', ' ').strip()
+        
+    def preparer_attaque_game(svg_atk):
+        """Même vaccin que dans le profil pour s'assurer que l'attaque soit visible quand elle vole"""
+        if not svg_atk: return ""
+        s = nettoyer_svg_game(svg_atk)
+        s = s.replace("<svg ", "<svg overflow='visible' ")
+        s = re.sub(r'opacity=["\']0["\']', 'opacity="1"', s)
+        s = re.sub(r'repeatCount=["\']\d+["\']', 'repeatCount="indefinite"', s)
+        s = re.sub(r'fill=["\']freeze["\']', 'repeatCount="indefinite"', s)
+        s = s.replace("fill='freeze'", "repeatCount='indefinite'")
+        return s
 
-    # On récupère les familiers des AUTRES joueurs
-    bots_svgs = []
+    # On récupère les familiers ET les attaques des AUTRES joueurs
+    bots_data_list = []
     for nom_joueur, data_joueur in db.get("utilisateurs", {}).items():
         if nom_joueur != user and data_joueur.get("familier_svg"):
-            bots_svgs.append(nettoyer_svg_game(data_joueur["familier_svg"]))
+            bot_base = nettoyer_svg_game(data_joueur["familier_svg"])
+            bot_attacks = []
+            
+            # Récupération des attaques personnalisées du bot
+            attaques_db = data_joueur.get("attaques", {})
+            for atk_type in ["pierre", "feuille", "ciseaux"]:
+                if atk_type in attaques_db and attaques_db[atk_type].get("svg_overlay"):
+                    atk_propre = preparer_attaque_game(attaques_db[atk_type]["svg_overlay"])
+                    bot_attacks.append(atk_propre)
+                    
+            bots_data_list.append({"base": bot_base, "attaques": bot_attacks})
 
-    # FIX 1 : MAX 3 ENNEMIS (Tirage au sort ou génération de drones)
-    if len(bots_svgs) > 3:
-        bots_svgs = random.sample(bots_svgs, 3)
-    elif len(bots_svgs) == 0:
+    # MAX 3 ENNEMIS (Pour les FPS)
+    if len(bots_data_list) > 3:
+        bots_data_list = random.sample(bots_data_list, 3)
+    elif len(bots_data_list) == 0:
         drone_rouge = "<svg viewBox='0 0 200 200' width='100%' height='100%' xmlns='[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)'><circle cx='100' cy='100' r='50' fill='#090014' stroke='#ff0055' stroke-width='6'/><circle cx='100' cy='100' r='15' fill='#00ffff'><animate attributeName='r' values='15;5;15' dur='1s' repeatCount='indefinite'/></circle><path d='M100 10 L100 40 M100 160 L100 190 M10 100 L40 100 M160 100 L190 100' stroke='#ff0055' stroke-width='6'><animateTransform attributeName='transform' type='rotate' values='0 100 100; 360 100 100' dur='4s' repeatCount='indefinite'/></path></svg>"
-        bots_svgs = [drone_rouge, drone_rouge, drone_rouge] # Seulement 3 drones
+        bots_data_list = [{"base": drone_rouge, "attaques": []}] * 3
 
-    bots_json = json.dumps(bots_svgs)
+    bots_json = json.dumps(bots_data_list)
 
-    # LE MOTEUR DE JEU (Mort définitive activée)
+    # LE MOTEUR DE JEU JS
     js_game_engine = '''
     if (window.cyberGameLoop) cancelAnimationFrame(window.cyberGameLoop);
     if (window.cyberMouseMove) window.removeEventListener("mousemove", window.cyberMouseMove);
@@ -1046,10 +1067,10 @@ elif st.session_state.page_actuelle == "🏆 Classement":
     };
     window.addEventListener("mousemove", window.cyberMouseMove);
 
-    var bots = botsData.map(function(svg) {
+    var bots = botsData.map(function(data) {
         var el = document.createElement("div");
         el.style.cssText = "position:absolute;width:80px;height:80px;transform:translate(-50%, -50%);transition: filter 0.1s;";
-        el.innerHTML = svg;
+        el.innerHTML = data.base;
         
         var hpBarContainer = document.createElement("div");
         hpBarContainer.style.cssText = "position:absolute;top:-15px;left:0;width:100%;height:6px;background:#111;border:1px solid #000;border-radius:3px;overflow:hidden;";
@@ -1063,7 +1084,11 @@ elif st.session_state.page_actuelle == "🏆 Classement":
         return {
             x: Math.random() < 0.5 ? -100 : window.innerWidth + 100,
             y: Math.random() * window.innerHeight,
-            hp: 100, el: el, hpBar: hpBar, lastShot: Math.random() * 100
+            hp: 100, 
+            el: el, 
+            hpBar: hpBar, 
+            lastShot: Math.random() * 100,
+            attaques: data.attaques // La liste des SVG d'attaque
         };
     });
 
@@ -1086,13 +1111,13 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             return;
         }
 
-        // TIR AUTOMATIQUE
+        // TIR AUTOMATIQUE (Joueur)
         playerLastShot++;
-        if(playerLastShot > 12) { 
+        if(playerLastShot > 15) { 
             var el = document.createElement("div");
             el.style.cssText = "position:absolute;left:" + mouseX + "px;top:" + mouseY + "px;width:30px;height:8px;background:#39ff14;box-shadow:0 0 20px #39ff14, 0 0 40px #ffff00;transform:translate(-50%,-50%) rotate(" + Math.atan2(dirY,dirX) + "rad);border-radius:4px;";
             overlay.appendChild(el);
-            lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el});
+            lasers.push({x: mouseX, y: mouseY, vx: dirX, vy: dirY, isPlayer: true, el: el, hitbox: 25});
             playerLastShot = 0; 
         }
 
@@ -1103,30 +1128,48 @@ elif st.session_state.page_actuelle == "🏆 Classement":
             var dist = Math.hypot(dx, dy);
             
             if(dist > 0) {
-                b.x += (dx/dist) * 2.2; 
-                b.y += (dy/dist) * 2.2;
+                b.x += (dx/dist) * 1.8; // Bot un peu plus lent
+                b.y += (dy/dist) * 1.8;
             }
             b.el.style.left = b.x + "px";
             b.el.style.top = b.y + "px";
 
             b.lastShot++;
-            if(b.lastShot > 70 && dist < 600) { 
+            // Cadence ralentie pour les bots (tous les ~120 frames + aléatoire)
+            if(b.lastShot > 120 && dist < 700) { 
                 var el = document.createElement("div");
-                el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:25px;height:6px;background:#ff00ff;box-shadow:0 0 20px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:3px;";
-                overlay.appendChild(el);
-                lasers.push({x: b.x, y: b.y, vx: dx/dist, vy: dy/dist, isPlayer: false, el: el});
-                b.lastShot = 0;
+                
+                // SI LE BOT A DES ATTAQUES FORGÉES, IL EN TIRE UNE AU HASARD
+                if (b.attaques && b.attaques.length > 0) {
+                    var randAtk = b.attaques[Math.floor(Math.random() * b.attaques.length)];
+                    el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:60px;height:60px;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad); filter: drop-shadow(0 0 15px rgba(255,0,255,0.8));";
+                    el.innerHTML = randAtk;
+                    overlay.appendChild(el);
+                    // Hitbox plus large car l'image de l'attaque est plus grosse
+                    lasers.push({x: b.x, y: b.y, vx: dx/dist, vy: dy/dist, isPlayer: false, el: el, hitbox: 35});
+                } else {
+                    // TIRE UN LASER CLASSIQUE S'IL N'A PAS DE CAPACITÉS
+                    el.style.cssText = "position:absolute;left:" + b.x + "px;top:" + b.y + "px;width:25px;height:6px;background:#ff00ff;box-shadow:0 0 20px #ff00ff;transform:translate(-50%,-50%) rotate(" + Math.atan2(dy,dx) + "rad);border-radius:3px;";
+                    overlay.appendChild(el);
+                    lasers.push({x: b.x, y: b.y, vx: dx/dist, vy: dy/dist, isPlayer: false, el: el, hitbox: 25});
+                }
+                
+                // Désynchronisation des tirs
+                b.lastShot = Math.random() * 40;
             }
         });
 
         for(var i = lasers.length - 1; i >= 0; i--) {
             var l = lasers[i];
-            l.x += l.vx * 18; 
-            l.y += l.vy * 18;
+            // Les projectiles volent à des vitesses différentes (le joueur tire plus vite)
+            var speed = l.isPlayer ? 18 : 12;
+            l.x += l.vx * speed; 
+            l.y += l.vy * speed;
             l.el.style.left = l.x + "px";
             l.el.style.top = l.y + "px";
 
-            if(l.x < -100 || l.x > window.innerWidth + 100 || l.y < -100 || l.y > window.innerHeight + 100) {
+            // Nettoyage hors écran
+            if(l.x < -150 || l.x > window.innerWidth + 150 || l.y < -150 || l.y > window.innerHeight + 150) {
                 l.el.remove();
                 lasers.splice(i, 1);
                 continue;
@@ -1144,12 +1187,12 @@ elif st.session_state.page_actuelle == "🏆 Classement":
 
                         if(b.hp <= 0) {
                             createExplosion(b.x, b.y, "#ff0055");
-                            b.el.remove(); // MORT DÉFINITIVE : on supprime du DOM
+                            b.el.remove();
                         }
                     }
                 });
             } else {
-                if(Math.hypot(mouseX - l.x, mouseY - l.y) < 25) {
+                if(Math.hypot(mouseX - l.x, mouseY - l.y) < l.hitbox) {
                     playerHp -= 20;
                     document.body.style.boxShadow = "inset 0 0 100px rgba(255, 0, 85, 0.9)";
                     setTimeout(function() { document.body.style.boxShadow = "none"; }, 150);
