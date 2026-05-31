@@ -1426,12 +1426,27 @@ elif st.session_state.page_actuelle == "👾 Profil":
                 }
                 
                 # Le menu interactif pour allumer les attaques
+# Le menu interactif pour allumer les attaques
                 simul_active = st.radio("Séquence à projeter :", ["repos", "pierre", "feuille", "ciseaux"], format_func=lambda x: choix_noms[x], horizontal=True)
                 
                 if simul_active != "repos":
                     svg_attaque = attaques.get(simul_active, {}).get("svg_overlay", "")
                     if svg_attaque:
                         attaque_propre = purger_svg(svg_attaque)
+                        
+                        # --- LE VACCIN ANTI-INVISIBILITÉ & HORS-CADRE ---
+                        
+                        # 1. Ton intuition était la bonne : on permet aux attaques de sortir de la boîte !
+                        attaque_propre = attaque_propre.replace("<svg ", "<svg overflow='visible' ")
+                        
+                        # 2. Le bug du Rasoir : on détruit les opacités à 0 de base pour forcer l'affichage
+                        import re
+                        attaque_propre = re.sub(r'opacity=["\']0["\']', 'opacity="1"', attaque_propre)
+                        
+                        # 3. Remplacement des arrêts sur image (freeze) par des boucles infinies
+                        attaque_propre = re.sub(r'repeatCount=["\']\d+["\']', 'repeatCount="indefinite"', attaque_propre)
+                        attaque_propre = re.sub(r'fill=["\']freeze["\']', 'repeatCount="indefinite"', attaque_propre)
+                        
                         # Le calque d'attaque est préparé pour se superposer au monstre
                         overlay_html = f"<div style='position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; filter: drop-shadow(0 0 25px {border_color});'>{attaque_propre}</div>"
             
