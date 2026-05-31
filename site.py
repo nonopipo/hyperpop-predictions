@@ -1335,7 +1335,7 @@ elif st.session_state.page_actuelle == "👾 Profil":
                     
                     trigger_animation("AVATAR UPLOADÉ 👾", jouer_son=True)
                     
-with tab_symbiote:
+    with tab_symbiote:
         st.markdown("<p style='color:#39ff14; margin-top:10px;'>Observation de l'entité cybernétique et test des capacités martiales.</p>", unsafe_allow_html=True)
         
         familier_svg = db["utilisateurs"][user].get("familier_svg", None)
