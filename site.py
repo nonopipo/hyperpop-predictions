@@ -383,6 +383,8 @@ def jouer_son_invisible(nom_fichier):
 # ==========================================
 import requests
 
+
+
 def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_theme):
     """
     Fait appel à Gemini pour générer le Familier ET ses 3 attaques (Pierre, Feuille, Ciseaux).
@@ -454,6 +456,51 @@ def muter_entite_avec_gemini(forme_actuelle, requete, niveau, style, dernier_the
     except Exception as e:
         return f'{{"erreur": "{str(e)}"}}'
 
+def forger_attaque_gemini(desc_familier, slot_attaque, nom_attaque, desc_attaque):
+    # Version blindée : AUCUN triple guillemet pour ne pas faire planter GitHub
+    try:
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        prompt = (
+            "Tu es un Forgeron Cyberpunk. Ta mission est de générer UNE SEULE animation d'attaque au format SVG pour un familier.\n"
+            f"- Apparence du familier lançant l'attaque : {desc_familier}\n"
+            f"- Emplacement de l'attaque : {slot_attaque}\n"
+            f"- Nom choisi par le joueur : {nom_attaque}\n"
+            f"- Description et Type voulu : {desc_attaque}\n\n"
+            "DIRECTIVES D'ANIMATION SVG (CRUCIAL) :\n"
+            "- Le SVG doit faire viewBox='0 0 200 200' width='100%' height='100%'. Transparent (aucun rect de fond).\n"
+            "- Ne dessine PAS le familier. Dessine UNIQUEMENT l'effet visuel de l'attaque (il sera superposé).\n\n"
+            "RÈGLES SELON LE TYPE D'ATTAQUE :\n"
+            "1. BOUCLIER / AURA (Sur place) : Anime au centre (autour de cx=100, cy=100). Ex: dôme qui pulse.\n"
+            "2. PROJECTILE / TIR : Le tir DOIT partir du centre (x=100) et aller vers la DROITE de l'écran (x=300). L'arène inversera automatiquement le tir pour l'adversaire.\n"
+            "3. SLASH / MÊLÉE : Dessine des arcs de cercle ou lignes obliques qui apparaissent et disparaissent très vite au centre.\n\n"
+            "RÉPONSE ATTENDUE : UNIQUEMENT UN OBJET JSON STRICT. AUCUN TEXTE AVANT NI APRÈS.\n"
+            "Format JSON requis :\n"
+            "{\n"
+            f"    \"nom\": \"{nom_attaque}\",\n"
+            "    \"svg_overlay\": \"<svg> ... l'animation ... </svg>\"\n"
+            "}"
+        )
+        
+        reponse = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+            ),
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+        )
+        
+        texte_brut = reponse.text.strip().replace("```json", "").replace("```", "").strip()
+        return texte_brut
+        
+    except Exception as e:
+        # Formatage sécurisé sans f-string complexe
+        return '{"erreur": "' + str(e).replace('"', "'") + '"}'
 
 def charger_joueurs():
     # On lit les identifiants depuis le coffre-fort (st.secrets)
@@ -1406,46 +1453,30 @@ elif st.session_state.page_actuelle == "👾 Profil":
         else:
             st.warning("⚠️ Aucun Symbiote détecté dans vos registres. Rendez-vous à la Clinique Cybernétique pour commencer une incubation.")
 elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
-    import random
-    st.subheader("LABORATOIRE D'ÉVOLUTION SYMBIOTIQUE")
+import random
+    st.subheader("LABORATOIRE & FORGE MARTIALE")
     
-    # On récupère les infos du joueur connecté
     u_data = db["utilisateurs"][user]
     points_actuels = u_data.get("score", 0)
     brins_actuels = u_data.get("brins_adn", 0)
     niveau_actuel = obtenir_rang(points_actuels) 
     
-    # On récupère son familier actuel 
     familier_svg = u_data.get("familier_svg", None)
-    forme_historique = u_data.get("familier_desc", "Un simple noyau d'énergie gris")
+    forme_historique = u_data.get("familier_desc", "Entité Inconnue")
+    attaques_actuelles = u_data.get("attaques", {})
     
     st.markdown(f"<h3 style='color:#ffff00; text-shadow: 0 0 10px #ff00ff;'>🧬 Brins d'ADN disponibles : {round(brins_actuels, 1)}</h3>", unsafe_allow_html=True)
-    
-    # --- RADAR DE DIAGNOSTIC ---
-    if st.button("📡 Scan des modèles API disponibles"):
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) 
-        st.write("Modèles détectés sur cette clé :")
-        try:
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    st.code(m.name)
-        except Exception as e:
-            st.error(f"Erreur de connexion : {e}")
-    # --------------------------
     
     col_visu, col_console = st.columns([1, 2])
     
     with col_visu:
-        st.markdown("### Entité Actuelle")
+        st.markdown("### Votre Symbiote")
         if familier_svg:
             import re
-            svg_propre = re.sub(r'', '', familier_svg, flags=re.DOTALL)
+            svg_propre = re.sub(r'<!--.*?-->', '', familier_svg, flags=re.DOTALL)
             svg_propre = svg_propre.replace("```xml", "").replace("```html", "").replace("```", "").strip()
             match = re.search(r'(<svg.*?</svg>)', svg_propre, re.DOTALL | re.IGNORECASE)
-            if match:
-                svg_propre = match.group(1)
-            elif not svg_propre.lower().startswith("<svg"):
-                svg_propre = f'<svg viewBox="0 0 200 200" width="200" height="200" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">{svg_propre}</svg>'
+            if match: svg_propre = match.group(1)
             svg_propre = svg_propre.replace("\n", " ")
             
             html_cage = f"""
@@ -1457,133 +1488,65 @@ elif st.session_state.page_actuelle == "🧬 Clinique Cybernétique":
             """
             st.markdown(html_cage, unsafe_allow_html=True)
         else:
-            st.info("Aucune entité détectée. L'incubation est requise.")
+            st.info("Aucune entité détectée. Utilisez le profil pour définir une base.")
+            st.stop()
             
     with col_console:
-        st.markdown("### Terminal de Mutation (Coût : 50 Brins)")
-        nouvelle_requete = st.text_input("Saisissez la mutation désirée :", placeholder="ex: Ajoute des ailes de néon rouge")
-        options_alignement = [
-                    "Équilibré (Gain normal | Perte normale)",
-                    "Kamikaze (Gain +15% | Perte +10% en cas d'échec)",
-                    "Prudent (Gain normal | Bouclier : Perte réduite de 15%)"
-                ]
-        style_joueur = st.selectbox("Alignement de l'Entité :", options_alignement)
+        st.markdown("### ⚒️ Forge Martiale (Coût : 25 Brins)")
+        st.markdown("Générez une attaque sur-mesure. **Le skin de votre symbiote ne sera pas modifié.**")
+        
+        choix_slot = st.selectbox("Emplacement de la technique :", ["pierre", "feuille", "ciseaux"], 
+            format_func=lambda x: f"{x.upper()} (Actuel : {attaques_actuelles.get(x, {}).get('nom', 'Vide')})")
+        
+        nouveau_nom = st.text_input("Nom de l'attaque :", placeholder="ex: Canon Plasma, Pluie de Météores, Bouclier Divin...")
+        nouvelle_desc = st.text_area("Comportement & Visuel (Sois créatif) :", placeholder="ex: [TIR / PROJECTILE] Un énorme laser rouge électrique qui traverse l'écran.\n[BOUCLIER] Une aura bleue qui pulse.")
     
-        if st.button("Lancer la Séquence 🧬"):
-            if brins_actuels < 50:
-                st.error("Brins d'ADN insuffisants. L'incubation demande plus de matière.")
-            elif len(nouvelle_requete) < 5:
-                st.warning("Soyez plus précis dans votre demande de mutation.")
+        if st.button("Forger la Compétence ⚡", use_container_width=True):
+            if brins_actuels < 25:
+                st.error("Fonds ADN insuffisants.")
+            elif len(nouveau_nom) < 3 or len(nouvelle_desc) < 5:
+                st.warning("Donne un nom et une description plus détaillés pour l'Architecte.")
             else:
-                paris_du_joueur = [p for p in db.get("paris", []) if p["joueur"] == user]
-                if paris_du_joueur:
-                    id_dernier_pari = paris_du_joueur[-1]["id_question"]
-                    question_liee = next((q for q in db["questions"] if q["id"] == id_dernier_pari), None)
-                    theme_a_envoyer = question_liee["titre"] if question_liee else "Cyberpunk"
-                else:
-                    theme_a_envoyer = "Cyberpunk"
-                
                 placeholder_chargement = st.empty()
                 html_loader = """
                 <style>
                     .cyber-loader-container { border: 2px solid #00ffff; background: rgba(0,20,40,0.8); padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px #00ffff, inset 0 0 15px #00ffff; margin-bottom: 20px;}
-                    .cyber-dna { font-size: 4rem; animation: spin-dna 1.5s linear infinite; display: inline-block; filter: drop-shadow(0 0 15px #39ff14); }
-                    @keyframes spin-dna { 100% { transform: rotateY(360deg); } }
+                    .cyber-dna { font-size: 4rem; animation: spin-hammer 0.5s linear infinite; display: inline-block; filter: drop-shadow(0 0 15px #39ff14); }
+                    @keyframes spin-hammer { 0% { transform: rotate(-20deg); } 50% { transform: rotate(45deg); } 100% { transform: rotate(-20deg); } }
                     .cyber-text-glitch { color: #39ff14; font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; animation: glitch-anim 0.2s infinite; margin-top: 15px;}
-                    .cyber-bar { width: 100%; height: 12px; background: #000; border: 2px solid #ff00ff; margin-top: 20px; position: relative; overflow: hidden; }
-                    .cyber-bar-fill { height: 100%; background: #ff00ff; width: 0%; animation: fill-bar 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate; box-shadow: 0 0 15px #ff00ff; }
-                    @keyframes fill-bar { 0% { width: 0%; } 100% { width: 100%; } }
                 </style>
-                <div class='cyber-loader-container'><div class='cyber-dna'>🧬</div><div class='cyber-text-glitch'>SYNTHÈSE GÉNÉTIQUE EN COURS...<br>CONTACT AVEC L'ARCHITECTE (API)</div><div class='cyber-bar'><div class='cyber-bar-fill'></div></div></div>
+                <div class='cyber-loader-container'><div class='cyber-dna'>⚒️</div><div class='cyber-text-glitch'>FORGE EN COURS...<br>COMPILATION DES EFFETS VISUELS</div></div>
                 """
                 placeholder_chargement.markdown(html_loader, unsafe_allow_html=True)
                 
- # 1. On appelle l'Architecte (qui renvoie maintenant un JSON)
-                reponse_brute = muter_entite_avec_gemini(forme_actuelle=forme_historique, requete=nouvelle_requete, niveau=points_actuels, style=style_joueur, dernier_theme=theme_a_envoyer)
+                # Appel du nouveau Forgeron
+                reponse_brute = forger_attaque_gemini(forme_historique, choix_slot, nouveau_nom, nouvelle_desc)
                 placeholder_chargement.empty()
                 
                 try:
                     import json
-                    import re
+                    data_forge = json.loads(reponse_brute)
                     
-                    # 2. On décrypte le JSON reçu
-                    data_mutation = json.loads(reponse_brute)
-                    
-                    nouveau_svg_base = data_mutation.get("svg_base", "")
-                    attaques_generees = data_mutation.get("attaques", {})
-                    
-                    if nouveau_svg_base.startswith("<svg"):
-                        def clean_evo(svg):
-                            if not svg: return "<div style='font-size:150px; text-align:center;'>🦠</div>"
-                            s = re.sub(r'', '', svg, flags=re.DOTALL)
-                            s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-                            s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
-                            s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
-                            s = re.sub(r'width="[^"]*"', 'width="100%"', s, count=1, flags=re.IGNORECASE)
-                            s = re.sub(r'height="[^"]*"', 'height="100%"', s, count=1, flags=re.IGNORECASE)
-                            return s.replace('\n', ' ').strip()
-                        
-                        svg_old_clean = clean_evo(familier_svg)
-                        svg_new_clean = clean_evo(nouveau_svg_base) # On utilise bien le SVG de base !
-                        
-                        html_evolution = f"""
-                        <style>
-                            .evo-screen {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #150030 0%, #000000 100%); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; }}
-                            .evo-stage {{ position: relative; width: 450px; height: 450px; display: flex; justify-content: center; align-items: center; }}
-                            .evo-sprite {{ position: absolute; width: 100%; height: 100%; }}
-                            .sprite-old {{ animation: poke-evo-old 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                            .sprite-new {{ opacity: 0; animation: poke-evo-new 5.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }}
-                            .evo-flashbang {{ position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; animation: bang 5.5s ease-out forwards; box-shadow: 0 0 200px 100px white; }}
-                            .evo-text {{ color: white; font-family: 'Arial Black', sans-serif; font-size: 2.5rem; margin-top: 50px; text-shadow: 0 0 20px #ffffff, 0 0 40px #00ffff; animation: pulse-text 0.5s infinite alternate; text-align: center; }}
-                            @keyframes poke-evo-old {{ 0% {{ filter: brightness(1); transform: scale(1); opacity: 1; }} 10% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 15% {{ opacity: 0; }} 25% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(1.1); opacity: 1; }} 30% {{ opacity: 0; }} 40% {{ filter: brightness(10); transform: scale(1.2); opacity: 1; }} 45% {{ opacity: 0; }} 52% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 55% {{ opacity: 0; }} 62% {{ filter: brightness(10); transform: scale(1.3); opacity: 1; }} 65% {{ opacity: 0; }} 100% {{ opacity: 0; }} }}
-                            @keyframes poke-evo-new {{ 0% {{ opacity: 0; }} 15% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 20% {{ opacity: 0; }} 30% {{ filter: brightness(10) drop-shadow(0 0 30px white); transform: scale(0.9); opacity: 1; }} 35% {{ opacity: 0; }} 45% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 50% {{ opacity: 0; }} 55% {{ filter: brightness(10); transform: scale(0.8); opacity: 1; }} 60% {{ opacity: 0; }} 65% {{ filter: brightness(10) drop-shadow(0 0 60px white); transform: scale(1); opacity: 1; }} 70% {{ filter: brightness(15) drop-shadow(0 0 250px white); transform: scale(1.5); opacity: 1; }} 85% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} 100% {{ filter: brightness(1) drop-shadow(0 0 50px #00ffff); transform: scale(1); opacity: 1; }} }}
-                            @keyframes bang {{ 0%, 65% {{ opacity: 0; transform: scale(0); }} 70% {{ opacity: 1; transform: scale(50); }} 85%, 100% {{ opacity: 0; transform: scale(100); }} }}
-                            @keyframes pulse-text {{ 0% {{ opacity: 0.5; transform: scale(0.95); }} 100% {{ opacity: 1; transform: scale(1.05); }} }}
-                        </style>
-                        <div class="evo-screen">
-                            <div class="evo-stage">
-                                <div class="evo-sprite sprite-old">{svg_old_clean}</div>
-                                <div class="evo-sprite sprite-new">{svg_new_clean}</div>
-                                <div class="evo-flashbang"></div>
-                            </div>
-                            <div class="evo-text">QUOI ? L'ENTITÉ ÉVOLUE !<br><span style="font-size:1.2rem; color:#ff00ff;">Acquisition de 3 compétences de combat...</span></div>
-                        </div>
-                        """
-                        
-                        placeholder_evo = st.empty()
-                        placeholder_evo.markdown(html_evolution, unsafe_allow_html=True)
-                        jouer_son_invisible("validation.mp3") 
-                        import time
-                        time.sleep(6)
-                        placeholder_evo.empty()
-                        
-                        # 3. SAUVEGARDE GLOBALE
-                        db["utilisateurs"][user]["brins_adn"] -= 50
-                        # On sauvegarde UNIQUEMENT la base pour le curseur/profil
-                        db["utilisateurs"][user]["familier_svg"] = nouveau_svg_base 
-                        db["utilisateurs"][user]["familier_desc"] = nouvelle_requete 
-                        db["utilisateurs"][user]["classe_familier"] = style_joueur
-                        
-                        # NOUVEAU : On sauvegarde les attaques secrètes pour l'Arène !
-                        db["utilisateurs"][user]["attaques"] = attaques_generees
-                        
-                        # On ajoute aussi un deck par défaut pour le Pierre-Feuille-Ciseaux si c'est sa 1ère fois
-                        if "deck_combat" not in db["utilisateurs"][user]:
-                            db["utilisateurs"][user]["deck_combat"] = ["pierre", "feuille", "ciseaux"]
+                    if "svg_overlay" in data_forge:
+                        # On débite et on sauvegarde uniquement l'attaque !
+                        db["utilisateurs"][user]["brins_adn"] -= 25
+                        if "attaques" not in db["utilisateurs"][user]:
+                            db["utilisateurs"][user]["attaques"] = {}
                             
+                        db["utilisateurs"][user]["attaques"][choix_slot] = {
+                            "nom": data_forge["nom"],
+                            "svg_overlay": data_forge["svg_overlay"]
+                        }
+                        
                         save_data(db)
-                        st.balloons()
+                        trigger_animation(f"COMPÉTENCE FORGÉE : {data_forge['nom'].upper()}", jouer_son=True)
                         st.rerun()
                     else:
-                        st.error("Le format JSON est bon, mais l'image de base générée est corrompue.")
-                        st.code(nouveau_svg_base)
-                        
+                        st.error("L'Architecte n'a pas renvoyé le calque SVG.")
+                        st.code(reponse_brute)
                 except Exception as e:
-                    st.error("Échec du séquençage ADN. L'Architecte a bafouillé son code.")
+                    st.error("Échec de la forge. Le métal instable a fondu.")
                     st.code(reponse_brute)
-                else:
-                    st.error("Échec de l'assemblage ADN. L'Architecte a renvoyé une erreur :")
-                    st.code(nouveau_svg)
 
 # ==========================================
     # 🎰 LA LOTERIE MUTAGÈNE (GACHA)
