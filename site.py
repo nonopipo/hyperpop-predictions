@@ -1347,8 +1347,7 @@ elif st.session_state.page_actuelle == "👾 Profil":
             def purger_svg(svg_raw):
                 if not svg_raw: return ""
                 s = re.sub(r'<!--.*?-->', '', svg_raw, flags=re.DOTALL)
-                s = s.replace("```xml", "").replace("
-```html", "").replace("```", "")
+                s = s.replace("```xml", "").replace("```html", "").replace("```", "")
                 s = re.sub(r'<rect[^>]*width=["\'](?:200|100%)["\'][^>]*height=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
                 s = re.sub(r'<rect[^>]*height=["\'](?:200|100%)["\'][^>]*width=["\'](?:200|100%)["\'][^>]*?/?>', '', s, flags=re.IGNORECASE)
                 s = re.sub(r'style=["\'][^"\']*background[^"\']*["\']', '', s, flags=re.IGNORECASE)
